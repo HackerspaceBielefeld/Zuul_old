@@ -20,6 +20,7 @@ def random(num):
 # verbindet die datenbank
 #ungeprüft
 def sql_connect(file):
+	print file
 	con = lite.connect(file)
 	with con:
 		return con.cursor()   
@@ -28,11 +29,16 @@ def sql_connect(file):
 # funktion zur sql abfrage
 #TODO
 def sql(cursor,que,onlyone=False):
-	cursor.execute(que)
+	if que.startswith("SELECT") or que.startswith("select"):
+		cursor.execute(str(que))
 
-	if(onlyone):
-		return cursor.fetchone()
-	return cursor.fetchall()
+		if bool(onlyone) == True:
+			r = cursor.fetchone()
+		else:
+			r = cursor.fetchall()
+		return r
+	else:
+		return cursor.execute(str(que))
 
 # schließt db
 def sql_close(cursor):
