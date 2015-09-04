@@ -1,10 +1,12 @@
 #!/usr/bin/python
 # coding: utf8
 
-import string,cgi,time,sys,inc.func
+import string,cgi,time,sys
+import func
 from os import curdir, sep
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
+conf = {}
 conf['db_path'] = "zuul.db"
 conf['expire'] = 60*15
 
@@ -42,14 +44,14 @@ class myHandler(BaseHTTPRequestHandler):
 	#TODO
 	def requests(self,post={},get={}):
 		global conf
-		access False
+		access = False
 		self.send_response(200)
 		self.send_header('Content-Type','text/html')
-		lite = sql(conf['db_path'])
+		lite = func.sql_connect(conf['db_path'])
 		
-		if post.has_key('uName') AND post.has_key('uPass'):
+		if post.has_key('uName') and post.has_key('uPass'):
 			# holt User anhand des usernamens
-			data = lite.sql("SELECT uPass, uSalt, uID FROM users WHERE uName LIKE ',post["uName"],'",True)
+			data = lite.sql("SELECT uPass, uSalt, uID FROM users WHERE uName LIKE '",post["uName"],"'",True)
 			if res.len > 0:
 				# Prüft ob Passwort stimmt
 				if md5(post["uPass"],data["uSalt"]) == data["uPass"]:
@@ -65,12 +67,15 @@ class myHandler(BaseHTTPRequestHandler):
 					else:
 						# update fehlgeschlagen
 						#TODO
+						pass
 				else:
 					# Passwort stimmt nicht
 					#TODO
+					pass
 			else:
 				#user existiert nicht
 				#TODO
+				pass
 		else:
 			#token prüfen und gleich expire erneuern
 			if get.has_key('s'):
@@ -81,9 +86,11 @@ class myHandler(BaseHTTPRequestHandler):
 				else:
 					# Token abgelaufen
 					#TODO
+					pass
 			else:
 				# Token nicht existent
 				#TODO
+				pass
 		
 		self.end_headers()
 		self.wfile.write("<html><head><title>Web-Administration Zuul</title></head><body>")	
@@ -114,7 +121,7 @@ class myHandler(BaseHTTPRequestHandler):
 		
 		
 		#Aufräumen
-		sql_close();
+		func.sql_close(lite);
 		self.wfile.write("</body></html>")
 		
 	def do_GET(self):
