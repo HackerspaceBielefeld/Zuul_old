@@ -1,5 +1,6 @@
 from random import choice
 import sqlite3 as lite
+import hashlib
 
 def isset(vname):
 	if vname in locals() or vname in globals():
@@ -43,3 +44,14 @@ def sql_close(cursor):
 #TODO
 def no_inject(str):
 	return str.replace("'","`");
+
+# md5 erzeugen
+#ungeprüft
+def md5(str):
+	return hashlib.md5(str).hexdigest()
+	
+# liefert Zeit Sting mit offset
+#ungeprüft
+def timestamp(offset=0):
+	t = time()+offset
+	return time.strftime('%Y-%m-%d %H:%M:%S', t)
