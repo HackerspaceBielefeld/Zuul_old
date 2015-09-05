@@ -73,14 +73,17 @@ class myHandler(BaseHTTPRequestHandler):
 						access = True
 					else:
 						# update fehlgeschlagen
+						self.wfile.write('''<p>Schreiben in DD Fehlgeschlagen</p>''')
 						#TODO
 						pass
 				else:
 					# Passwort stimmt nicht
+					self.wfile.write('''<p>Passwort nicht Korrekt</p>''')
 					#TODO
 					pass
 			else:
 				#user existiert nicht
+				self.wfile.write('''<p>User nicht Korrekt</p>''')
 				#TODO
 				pass
 		else:
@@ -94,10 +97,12 @@ class myHandler(BaseHTTPRequestHandler):
 					access = True
 				else:
 					# Token abgelaufen
+					self.wfile.write('''<p>Session abgelaufen</p>''')
 					#TODO
 					pass
 			else:
 				# Token nicht existent
+				self.wfile.write('''<p>Keine Session gefunden</p>''')
 				#TODO
 				pass
 
