@@ -116,7 +116,15 @@ class myHandler(BaseHTTPRequestHandler):
 			<a href="/logout/index/s/%s">Logout</a>
 			<hr/>''' % (session,session,session,session)
 			self.wfile.write(navi)	
-			#TODO
+			if get.has_key(user):
+				if get["user"] == '':
+					get["user"] = 'list'
+				if get["user"] == 'create':
+					if post.has_key("submit"):
+						#TODO
+						pass
+					else:
+						content = '''<form action="/user/create/s/%s" method="post">Name<input type="text" name="uName" /><br/>Passwort <input type="password" name="uPass" />(Nur ausfüllen, wenn der user admin zugriff haben soll.)<br/><input type="submit" name="submit" value="Erstellen" /></form>''' % session
 			self.wfile.write('''Angemeldet''')
 		else:
 			# hier sieht man nur wenn man abgemeldet ist
