@@ -54,19 +54,18 @@ class myHandler(BaseHTTPRequestHandler):
 		if post.has_key('uName') and post.has_key('uPass'):
 			# holt User anhand des usernamens
 			que = "SELECT uPass, uSalt, uID FROM users WHERE uName LIKE '%s'" % post["uName"][0]
-			print que
-			data = func.sql(lite,que,True)
-			print data
-			print type(data)
-			if data.len > 0:
+			data = func.sql(lite,que)
+			if len(data) == 1:
 				# Prüft ob Passwort stimmt
-				if md5(post["uPass"][0],data["uSalt"][0]) == data["uPass"]:
+				nMD5 = "%s%s" % (post["uPass"][0],data[0][1])
+				if func.md5(nMD5) == data[0][0]:
 					# erstelle neues uSalt und uPass
-					uSalt = random(75)
-					uPass = md5(post["uPass"][0],uSalt)
-					session = random(32)
-					expire = timestamp(conf['expire'])
-					que = "UPDATE users SET uSalt = '%s',uPass='%s',session='%s',expire='%s'" % (uSalt,uPass,session,expire)
+					uSalt = func.random(75)
+					nMD5 = "%s%s" % (post["uPass"][0],uSalt)
+					uPass = func.md5(nMD5)
+					session = func.random(32)
+					expire = func.timestamp(conf['expire'])
+					que = "UPDATE users SET uSalt = '%s',uPass='%s',uSession='%s',expire='%s'" % (uSalt,uPass,session,expire)
 					if func.sql(lite,que):
 						# db update erfolgreich
 						session = session
@@ -88,9 +87,10 @@ class myHandler(BaseHTTPRequestHandler):
 				pass
 		else:
 			#token prüfen und gleich expire erneuern
+			print get
 			if get.has_key('s'):
-				expire = timestamp(conf['expire']) #15 min
-				now = timestamp()
+				expire = func.timestamp(conf['expire'])
+				now = func.timestamp()
 				que = "UPDATE users SET expire='%s' WHERE session = '%s'" % (expire,get['s'])
 				if func.sql(lite,que):
 					session = get['s']
@@ -110,12 +110,12 @@ class myHandler(BaseHTTPRequestHandler):
 		if access == True:
 			# hier kommt alles rein was nur erreichbar ist, wenn man angemeldet ist
 			# Navigation
-			self.wfile.write('''
-			<a href="/stats/index/s/''',session,'''">Statistik</a> 
-			<a href="/p/user/list/s/''',session,'''">Userliste</a> 
-			<a href="/p/user/create/s/''',session,'''">User erstellen</a>
-			<a href="/logout/index/s/''',session,'''">Logout</a>
-			<hr/>''')	
+			navi = '''<a href="/stats/index/s/%s">Statistik</a>
+			<a href="/user/list/s/%s">Userliste</a>
+			<a href="/user/create/s/%s">User erstellen</a>
+			<a href="/logout/index/s/%s">Logout</a>
+			<hr/>''' % (session,session,session,session)
+			self.wfile.write(navi)	
 			#TODO
 			self.wfile.write('''Angemeldet''')
 		else:

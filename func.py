@@ -3,12 +3,17 @@
 
 from random import choice
 import sqlite3 as lite
+import hashlib
+from time import *
 
-def isset(vname):
-	if vname in locals() or vname in globals():
-		return vname
-	return False
+def md5(s):
+	return hashlib.md5(s).hexdigest()
 
+def timestamp(offset=0):
+	t = int(time()) + int(offset)
+	return strftime("%Y-%m-%d %H:%M:%S",localtime(t))
+	
+	
 # funktion zum erzeugen willkÃ¼rlicher strings
 def random(num):
 	ret = ""
@@ -22,28 +27,27 @@ def random(num):
 def sql_connect(file):
 	print file
 	con = lite.connect(file)
-	with con:
-		return con.cursor()   
-	return False
+	return con
 
 # funktion zur sql abfrage
 #TODO
-def sql(cursor,que,onlyone=False):
+def sql(con,que):
+	cur = con.cursor()
 	if que.startswith("SELECT") or que.startswith("select"):
-		cursor.execute(str(que))
-
-		if bool(onlyone) == True:
-			r = cursor.fetchone()
-		else:
-			r = cursor.fetchall()
-		return r
+		cur.execute(str(que))
+		return cur.fetchall()
 	else:
-		return cursor.execute(str(que))
+		try:
+			cur.execute(str(que))
+			con.commit()
+			return True
+		except:
+			return False
 
 # schließt db
-def sql_close(cursor):
-	if cursor:
-		cursor.close()
+def sql_close(con):
+	if con:
+		con.close()
 		return True
 	return False
 
