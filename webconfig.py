@@ -9,7 +9,7 @@ from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 conf = {}
 conf['db_path'] = "./zuul.db"
 conf['expire'] = 60*15
-
+# PRoblem?
 class myHandler(BaseHTTPRequestHandler):
 	# Fehler text Funktion
 	def throwError(self,code=404):
@@ -116,16 +116,46 @@ class myHandler(BaseHTTPRequestHandler):
 			<a href="/logout/index/s/%s">Logout</a>
 			<hr/>''' % (session,session,session,session)
 			self.wfile.write(navi)	
-			if get.has_key(user):
+			if get.has_key('user'):
 				if get["user"] == '':
 					get["user"] = 'list'
+					
 				if get["user"] == 'create':
 					if post.has_key("submit"):
 						#TODO
 						pass
 					else:
 						content = '''<form action="/user/create/s/%s" method="post">Name<input type="text" name="uName" /><br/>Passwort <input type="password" name="uPass" />(Nur ausfüllen, wenn der user admin zugriff haben soll.)<br/><input type="submit" name="submit" value="Erstellen" /></form>''' % session
-			self.wfile.write('''Angemeldet''')
+						self.wfile.write(content)
+						
+				if get["user"] == 'edit':
+					pass
+					#TODO
+				if get["user"] == 'del':
+					pass
+					#TODO
+				
+				if get["user"] == 'detail':
+					pass
+					#TODO
+					
+				if get["user"] == 'list':
+					pass
+					#TODO
+					
+				
+			if get.has_key("token"):
+				#token list gibts in user details schon
+				
+				#token create
+				
+				#token deleter
+				pass
+				
+			if get.has_key("log"):
+				#todo
+				pass
+				
 		else:
 			# hier sieht man nur wenn man abgemeldet ist
 			# Navigation
@@ -147,6 +177,14 @@ class myHandler(BaseHTTPRequestHandler):
 		if get.has_key("stats"):
 			pass
 			#TODO
+			
+		if get.has_key("favicon.ico"):
+			#todo
+			pass
+			
+		if get.has_key("style.css"):
+			pass
+			#todo
 		
 		#Aufräumen
 		func.sql_close(lite);
