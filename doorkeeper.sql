@@ -16,7 +16,7 @@ CREATE TABLE users (
   uName varchar(35) NOT NULL,
   uPass varchar(32) NOT NULL,
   uSalt varchar(75) NOT NULL,
-  session varchar(32) NOT NULL,
+  uSession varchar(32) NOT NULL,
   uActive enum('false','true') NOT NULL DEFAULT 'true',
   expire timestamp NOT NULL DEFAULT '0000-00-00 00:00:00'
 );

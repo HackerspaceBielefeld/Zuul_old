@@ -1,11 +1,13 @@
 #!/usr/bin/python
 # coding: utf8
 
-import string,cgi,time,sys,inc.func
+import string,cgi,time,sys
+import func
 from os import curdir, sep
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
-conf['db_path'] = "zuul.db"
+conf = {}
+conf['db_path'] = "./zuul.db"
 conf['expire'] = 60*15
 
 class myHandler(BaseHTTPRequestHandler):
@@ -13,7 +15,7 @@ class myHandler(BaseHTTPRequestHandler):
 	def throwError(self,code=404):
 		codes[404] = "File not Found"
 		self.send_error(code,codes[code])
-		
+
 	# holt get Vars
 	def getGets(self):
 		tmp = string.split(self.path[1:],"/")
@@ -25,7 +27,7 @@ class myHandler(BaseHTTPRequestHandler):
 			else:
 				vars[tmp[t]] = ""
 		return vars
-	
+
 	# holt post vars
 	def getPosts(self):
 		ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
@@ -37,84 +39,117 @@ class myHandler(BaseHTTPRequestHandler):
 		else:
 			postvars = {}
 		return postvars
-	
+
 	# beinhaltet die Seitenführung
 	#TODO
 	def requests(self,post={},get={}):
 		global conf
-		access False
+		access = False
 		self.send_response(200)
 		self.send_header('Content-Type','text/html')
-		lite = sql(conf['db_path'])
-		
-		if post.has_key('uName') AND post.has_key('uPass'):
+		self.end_headers()
+		self.wfile.write("<html><head><title>Web-Administration Zuul</title></head><body>")	
+		lite = func.sql_connect(conf['db_path'])
+
+		if post.has_key('uName') and post.has_key('uPass'):
 			# holt User anhand des usernamens
-			data = lite.sql("SELECT uPass, uSalt, uID FROM users WHERE uName LIKE ',post["uName"],'",True)
-			if res.len > 0:
+			que = "SELECT uPass, uSalt, uID FROM users WHERE uName LIKE '%s'" % post["uName"][0]
+			data = func.sql(lite,que)
+			if len(data) == 1:
 				# Prüft ob Passwort stimmt
-				if md5(post["uPass"],data["uSalt"]) == data["uPass"]:
+				nMD5 = "%s%s" % (post["uPass"][0],data[0][1])
+				if func.md5(nMD5) == data[0][0]:
 					# erstelle neues uSalt und uPass
-					uSalt = random(75)
-					uPass = md5(post["uPass"],uSalt)
-					session = random(32)
-					expire = timestamp(conf['expire'])
-					if lite.sql("UPDATE users SET uSalt = '",uSalt,"',uPass='",uPass,"',session='",session,"',expire='",expire,"'"):
+					uSalt = func.random(75)
+					nMD5 = "%s%s" % (post["uPass"][0],uSalt)
+					uPass = func.md5(nMD5)
+					session = func.random(32)
+					expire = func.timestamp(conf['expire'])
+					que = "UPDATE users SET uSalt = '%s',uPass='%s',uSession='%s',expire='%s'" % (uSalt,uPass,session,expire)
+					if func.sql(lite,que):
 						# db update erfolgreich
 						session = session
 						access = True
 					else:
 						# update fehlgeschlagen
+						self.wfile.write('''<p>Schreiben in DD Fehlgeschlagen</p>''')
 						#TODO
+						pass
 				else:
 					# Passwort stimmt nicht
+					self.wfile.write('''<p>Passwort nicht Korrekt</p>''')
 					#TODO
+					pass
 			else:
 				#user existiert nicht
+				self.wfile.write('''<p>User nicht Korrekt</p>''')
 				#TODO
+				pass
 		else:
 			#token prüfen und gleich expire erneuern
+			print get
 			if get.has_key('s'):
-				expire = timestamp(conf['expire']) #15 min
-				now = timestamp()
-				if lite.sql("UPDATE users SET expire='",expire,"' WHERE session = '",get['s'],"'"):
+				expire = func.timestamp(conf['expire'])
+				now = func.timestamp()
+				que = "UPDATE users SET expire='%s' WHERE session = '%s'" % (expire,get['s'])
+				if func.sql(lite,que):
+					session = get['s']
 					access = True
 				else:
 					# Token abgelaufen
+					self.wfile.write('''<p>Session abgelaufen</p>''')
 					#TODO
+					pass
 			else:
 				# Token nicht existent
+				self.wfile.write('''<p>Keine Session gefunden</p>''')
 				#TODO
-		
-		self.end_headers()
-		self.wfile.write("<html><head><title>Web-Administration Zuul</title></head><body>")	
-		
-	
-		
+				pass
+
 		# Content
 		if access == True:
 			# hier kommt alles rein was nur erreichbar ist, wenn man angemeldet ist
 			# Navigation
-			self.wfile.write('''
-			<a href="/p/stats">Statistik</a> 
-			<a href="/p/user/a/list">Userliste</a> 
-			<a href="/p/user/a/create">User erstellen</a>
-			<hr/>''')	
-			#TODO
+			navi = '''<a href="/stats/index/s/%s">Statistik</a>
+			<a href="/user/list/s/%s">Userliste</a>
+			<a href="/user/create/s/%s">User erstellen</a>
+			<a href="/logout/index/s/%s">Logout</a>
+			<hr/>''' % (session,session,session,session)
+			self.wfile.write(navi)	
+			if get.has_key(user):
+				if get["user"] == '':
+					get["user"] = 'list'
+				if get["user"] == 'create':
+					if post.has_key("submit"):
+						#TODO
+						pass
+					else:
+						content = '''<form action="/user/create/s/%s" method="post">Name<input type="text" name="uName" /><br/>Passwort <input type="password" name="uPass" />(Nur ausfüllen, wenn der user admin zugriff haben soll.)<br/><input type="submit" name="submit" value="Erstellen" /></form>''' % session
 			self.wfile.write('''Angemeldet''')
 		else:
 			# hier sieht man nur wenn man abgemeldet ist
 			# Navigation
 			self.wfile.write('''
-			<a href="/p/stats">Statistik</a> 
-			<a href="/p/user/a/list">Userliste</a> 
-			<a href="/p/user/a/create">User erstellen</a>
+			<a href="/stats">Statistik</a> 
+			<a href="/login">Login</a> 
 			<hr/>''')	
+			
+			if get.has_key("login"):
+				self.wfile.write('''<form action="" method="post">
+					User: <input type="text" name="uName" /><br/>
+					Pass: <input type="password" name="uPass" /></br>
+					<input type="submit" name="submit" value="Login" />
+				</form>''')
+			
 			#TODO
 			self.wfile.write('''Abgemeldet''')
 		
+		if get.has_key("stats"):
+			pass
+			#TODO
 		
 		#Aufräumen
-		sql_close();
+		func.sql_close(lite);
 		self.wfile.write("</body></html>")
 		
 	def do_GET(self):
