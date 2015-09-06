@@ -9,7 +9,7 @@ from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 conf = {}
 conf['db_path'] = "./zuul.db"
 conf['expire'] = 60*15
-# PRoblem?
+
 class myHandler(BaseHTTPRequestHandler):
 	# Fehler text Funktion
 	def throwError(self,code=404):
