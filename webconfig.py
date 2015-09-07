@@ -7,12 +7,15 @@ from os import curdir, sep
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 conf = {}
-conf['db_path'] = "./zuul.db"
-conf['expire'] = 60*15
+conf['db_path'] = "./zuul.db"	#datenbank pfad
+conf['expire'] = 60*15			#zeit des session timeouts
+conf['dellog'] = (-60)*60*24*30	#zeit nach der logs gelöscht werden
+conf['ipblock'] = (-60)*30		#zeit der ip sperre
 
 class myHandler(BaseHTTPRequestHandler):
 	# Fehler text Funktion
 	def throwError(self,code=404):
+		codes = {}
 		codes[404] = "File not Found"
 		self.send_error(code,codes[code])
 
@@ -46,157 +49,185 @@ class myHandler(BaseHTTPRequestHandler):
 		global conf
 		access = False
 		self.send_response(200)
-		self.send_header('Content-Type','text/html')
-		self.end_headers()
-		self.wfile.write("<html><head><title>Web-Administration Zuul</title></head><body>")	
-		lite = func.sql_connect(conf['db_path'])
-
-		if post.has_key('uName') and post.has_key('uPass'):
-			# holt User anhand des usernamens
-			que = "SELECT uPass, uSalt, uID FROM users WHERE uName LIKE '%s'" % post["uName"][0]
-			data = func.sql(lite,que)
-			if len(data) == 1:
-				# Prüft ob Passwort stimmt
-				nMD5 = "%s%s" % (post["uPass"][0],data[0][1])
-				if func.md5(nMD5) == data[0][0]:
-					# erstelle neues uSalt und uPass
-					uSalt = func.random(75)
-					nMD5 = "%s%s" % (post["uPass"][0],uSalt)
-					uPass = func.md5(nMD5)
-					session = func.random(32)
-					expire = func.timestamp(conf['expire'])
-					que = "UPDATE users SET uSalt = '%s',uPass='%s',uSession='%s',expire='%s'" % (uSalt,uPass,session,expire)
-					if func.sql(lite,que):
-						# db update erfolgreich
-						session = session
-						access = True
-					else:
-						# update fehlgeschlagen
-						self.wfile.write('''<p>Schreiben in DD Fehlgeschlagen</p>''')
-						#TODO
-						pass
-				else:
-					# Passwort stimmt nicht
-					self.wfile.write('''<p>Passwort nicht Korrekt</p>''')
-					#TODO
-					pass
-			else:
-				#user existiert nicht
-				self.wfile.write('''<p>User nicht Korrekt</p>''')
-				#TODO
-				pass
+		if get.has_key('favicon.ico'):
+			self.send_header('Content-Type','image/x-icon')
+			fo = open(curdir + sep + "favicon.ico", "rb")
+			with open ("favicon.ico", "rb") as myfile:
+				data=myfile.read().replace('\n', '')
+			fo.close()
+			self.wfile.write(data)
 		else:
-			#token prüfen und gleich expire erneuern
-			print get
-			if get.has_key('s'):
-				expire = func.timestamp(conf['expire'])
-				now = func.timestamp()
-				que = "UPDATE users SET expire='%s' WHERE session = '%s'" % (expire,get['s'])
-				if func.sql(lite,que):
-					session = get['s']
-					access = True
-				else:
-					# Token abgelaufen
-					self.wfile.write('''<p>Session abgelaufen</p>''')
-					#TODO
-					pass
-			else:
-				# Token nicht existent
-				self.wfile.write('''<p>Keine Session gefunden</p>''')
-				#TODO
-				pass
+			self.send_header('Content-Type','text/html')
+			self.end_headers()
+			self.wfile.write("<html><head><title>Web-Administration Zuul</title></head><body>")	
+			lite = func.sql_connect(conf['db_path'])
 
-		# Content
-		if access == True:
-			# hier kommt alles rein was nur erreichbar ist, wenn man angemeldet ist
-			# Navigation
-			navi = '''<a href="/stats/index/s/%s">Statistik</a>
-			<a href="/user/list/s/%s">Userliste</a>
-			<a href="/user/create/s/%s">User erstellen</a>
-			<a href="/logout/index/s/%s">Logout</a>
-			<hr/>''' % (session,session,session,session)
-			self.wfile.write(navi)	
-			if get.has_key('user'):
-				if get["user"] == '':
-					get["user"] = 'list'
-					
-				if get["user"] == 'create':
-					if post.has_key("submit"):
-						#TODO
-						pass
+			if post.has_key('uName') and post.has_key('uPass'):
+				# holt User anhand des usernamens
+				
+				ipaddr = func.no_inject(self.client_address[0])
+				blocktime = func.timestamp(conf['ipblock'])
+				log = func.sql(lite,"SELECT timecode FROM log WHERE ipAddr = '%s' AND answere = 'X' AND timecode > '%s'" % (ipaddr,blocktime))
+				print log
+				if(len(log) < 3):
+					que = "SELECT uPass, uSalt, uID FROM users WHERE uName LIKE '%s'" % post["uName"][0]
+					data = func.sql(lite,que)
+					if len(data) == 1:
+						# Prüft ob Passwort stimmt
+						nMD5 = "%s%s" % (post["uPass"][0],data[0][1])
+						if func.md5(nMD5) == data[0][0]:
+							# erstelle neues uSalt und uPass
+							uSalt = func.random(75)
+							nMD5 = "%s%s" % (post["uPass"][0],uSalt)
+							uPass = func.md5(nMD5)
+							session = func.random(32)
+							expire = func.timestamp(conf['expire'])
+							que = "UPDATE users SET uSalt = '%s',uPass='%s',uSession='%s',expire='%s'" % (uSalt,uPass,session,expire)
+							if func.sql(lite,que):
+								# db update erfolgreich
+								session = session
+								access = True
+							else:
+								# update fehlgeschlagen
+								self.wfile.write('''<p>Schreiben in DB Fehlgeschlagen</p>''')
+						else:
+							# Passwort stimmt nicht
+							self.wfile.write('''<p>Passwort nicht Korrekt</p>''')
+							
+							dellog = func.timestamp(conf['dellog'])
+							now = func.timestamp()
+							func.sql(lite,"DELETE FROM log WHERE timecode < '%s';" % dellog)
+							func.sql(lite,"INSERT INTO log (tokenID, answere, timecode, ipAddr) VALUES  ('fffffffffffffffffffffffffffffffff','X','%s','%s')" % (now,ipaddr));
 					else:
-						content = '''<form action="/user/create/s/%s" method="post">Name<input type="text" name="uName" /><br/>Passwort <input type="password" name="uPass" />(Nur ausfüllen, wenn der user admin zugriff haben soll.)<br/><input type="submit" name="submit" value="Erstellen" /></form>''' % session
-						self.wfile.write(content)
+						#user existiert nicht
+						self.wfile.write('''<p>User nicht Korrekt</p>''')
+
+						dellog = func.timestamp(conf['dellog'])
+						now = func.timestamp()
+						func.sql(lite,"DELETE FROM log WHERE timecode < '%s';" % dellog)
+						func.sql(lite,"INSERT INTO log (tokenID, answere, timecode, ipAddr) VALUES  ('fffffffffffffffffffffffffffffffff','X','%s','%s')" % (now,ipaddr));
+				else:
+					#ip gesperrt
+					self.wfile.write('''<p>Die IP-Adresse wurde gesperrt</p>''')
+			else:
+				#token prüfen und gleich expire erneuern
+				print get
+				if get.has_key('s'):
+					if get.has_key("logout"):
+						expire = '0000-00-00- 00:00:00'
+					else:
+						expire = func.timestamp(conf['expire'])
+					
+					now = func.timestamp()
+					session = func.no_inject(get['s'])
+					que = "UPDATE users SET expire='%s' WHERE uSession = '%s'" % (expire,session)
+					print que
+					if func.sql(lite,que):
+						if get.has_key("logout"):
+							self.wfile.write('''<p>Session beendet.</p>''')
+							access = False
+						else:
+							access = True
+					else:
+						# Token abgelaufen			
+						self.wfile.write('''<p>Session abgelaufen</p>''')
+				else:
+					# Token nicht existent
+					self.wfile.write('''<p>Keine Session gefunden</p>''')
+					#TODO
+					pass
+
+			# Content
+			if access == True:
+				# hier kommt alles rein was nur erreichbar ist, wenn man angemeldet ist
+				# Navigation
+				navi = '''<a href="/stats/index/s/%s">Statistik</a>
+				<a href="/user/list/s/%s">Userliste</a>
+				<a href="/user/create/s/%s">User erstellen</a>
+				<a href="/logout/index/s/%s">Logout</a>
+				<hr/>''' % (session,session,session,session)
+				self.wfile.write(navi)	
+				if get.has_key('user'):
+					if get["user"] == '':
+						get["user"] = 'list'
 						
-				if get["user"] == 'edit':
-					pass
-					#TODO
-				if get["user"] == 'del':
-					pass
-					#TODO
-				
-				if get["user"] == 'detail':
-					pass
-					#TODO
+					if get["user"] == 'create':
+						if post.has_key("submit"):
+							#TODO
+							pass
+						else:
+							content = '''<form action="/user/create/s/%s" method="post">Name<input type="text" name="uName" /><br/>Passwort <input type="password" name="uPass" />(Nur ausfüllen, wenn der user admin zugriff haben soll.)<br/><input type="submit" name="submit" value="Erstellen" /></form>''' % session
+							self.wfile.write(content)
+							
+					if get["user"] == 'edit':
+						pass
+						#TODO
+					if get["user"] == 'del':
+						pass
+						#TODO
 					
-				if get["user"] == 'list':
-					pass
-					#TODO
+					if get["user"] == 'detail':
+						pass
+						#TODO
+						
+					if get["user"] == 'list':
+						pass
+						#TODO
+						
 					
+				if get.has_key("token"):
+					#token list gibts in user details schon
+					
+					#token create
+					
+					#token deleter
+					pass
+					
+				if get.has_key("log"):
+					#todo
+					pass
+
+			else:
+				# hier sieht man nur wenn man abgemeldet ist
+				# Navigation
+				self.wfile.write('''
+				<a href="/stats">Statistik</a> 
+				<a href="/login">Login</a> 
+				<hr/>''')	
 				
-			if get.has_key("token"):
-				#token list gibts in user details schon
+				if get.has_key("login"):
+					self.wfile.write('''<form action="" method="post">
+						User: <input type="text" name="uName" /><br/>
+						Pass: <input type="password" name="uPass" /></br>
+						<input type="submit" name="submit" value="Login" />
+					</form>''')
 				
-				#token create
-				
-				#token deleter
+				#TODO
+				self.wfile.write('''Abgemeldet''')
+			
+			if get.has_key("stats"):
 				pass
+				#TODO
 				
-			if get.has_key("log"):
+			if get.has_key("favicon.ico"):
 				#todo
 				pass
 				
-		else:
-			# hier sieht man nur wenn man abgemeldet ist
-			# Navigation
-			self.wfile.write('''
-			<a href="/stats">Statistik</a> 
-			<a href="/login">Login</a> 
-			<hr/>''')	
+			if get.has_key("style.css"):
+				pass
+				#todo
 			
-			if get.has_key("login"):
-				self.wfile.write('''<form action="" method="post">
-					User: <input type="text" name="uName" /><br/>
-					Pass: <input type="password" name="uPass" /></br>
-					<input type="submit" name="submit" value="Login" />
-				</form>''')
-			
-			#TODO
-			self.wfile.write('''Abgemeldet''')
-		
-		if get.has_key("stats"):
-			pass
-			#TODO
-			
-		if get.has_key("favicon.ico"):
-			#todo
-			pass
-			
-		if get.has_key("style.css"):
-			pass
-			#todo
-		
-		#Aufräumen
-		func.sql_close(lite);
-		self.wfile.write("</body></html>")
+			#Aufräumen
+			func.sql_close(lite);
+			self.wfile.write("</body></html>")
 		
 	def do_GET(self):
-		try:
+		#try:
 			gets = self.getGets()
 			self.requests({},gets)
 			return
-		except IOError:
-			throwError(404)
+		#except IOError:
+		#	self.throwError(404)
 			
 	def do_POST(self):
 		global rootnode
