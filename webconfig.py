@@ -104,17 +104,24 @@ class myHandler(BaseHTTPRequestHandler):
 			#token prüfen und gleich expire erneuern
 			print get
 			if get.has_key('s'):
-				expire = func.timestamp(conf['expire'])
-				now = func.timestamp()
-				que = "UPDATE users SET expire='%s' WHERE session = '%s'" % (expire,get['s'])
-				if func.sql(lite,que):
-					session = get['s']
-					access = True
+				if get.has_key("logout"):
+					expire = '0000-00-00- 00:00:00'
 				else:
-					# Token abgelaufen
+					expire = func.timestamp(conf['expire'])
+				
+				now = func.timestamp()
+				session = func.no_inject(get['s'])
+				que = "UPDATE users SET expire='%s' WHERE uSession = '%s'" % (expire,session)
+				print que
+				if func.sql(lite,que):
+					if get.has_key("logout"):
+						self.wfile.write('''<p>Session beendet.</p>''')
+						access = False
+					else:
+						access = True
+				else:
+					# Token abgelaufen			
 					self.wfile.write('''<p>Session abgelaufen</p>''')
-					#TODO
-					pass
 			else:
 				# Token nicht existent
 				self.wfile.write('''<p>Keine Session gefunden</p>''')
@@ -170,7 +177,7 @@ class myHandler(BaseHTTPRequestHandler):
 			if get.has_key("log"):
 				#todo
 				pass
-				
+
 		else:
 			# hier sieht man nur wenn man abgemeldet ist
 			# Navigation
