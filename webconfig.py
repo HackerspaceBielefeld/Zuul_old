@@ -7,8 +7,10 @@ from os import curdir, sep
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 conf = {}
-conf['db_path'] = "./zuul.db"
-conf['expire'] = 60*15
+conf['db_path'] = "./zuul.db"	#datenbank pfad
+conf['expire'] = 60*15			#zeit des session timeouts
+conf['dellog'] = (-60)*60*24*30	#zeit nach der logs gelöscht werden
+conf['ipblock'] = (-60)*30		#zeit der ip sperre
 
 class myHandler(BaseHTTPRequestHandler):
 	# Fehler text Funktion
@@ -53,38 +55,51 @@ class myHandler(BaseHTTPRequestHandler):
 
 		if post.has_key('uName') and post.has_key('uPass'):
 			# holt User anhand des usernamens
-			que = "SELECT uPass, uSalt, uID FROM users WHERE uName LIKE '%s'" % post["uName"][0]
-			data = func.sql(lite,que)
-			if len(data) == 1:
-				# Prüft ob Passwort stimmt
-				nMD5 = "%s%s" % (post["uPass"][0],data[0][1])
-				if func.md5(nMD5) == data[0][0]:
-					# erstelle neues uSalt und uPass
-					uSalt = func.random(75)
-					nMD5 = "%s%s" % (post["uPass"][0],uSalt)
-					uPass = func.md5(nMD5)
-					session = func.random(32)
-					expire = func.timestamp(conf['expire'])
-					que = "UPDATE users SET uSalt = '%s',uPass='%s',uSession='%s',expire='%s'" % (uSalt,uPass,session,expire)
-					if func.sql(lite,que):
-						# db update erfolgreich
-						session = session
-						access = True
+			
+			ipaddr = func.no_inject(self.client_address[0])
+			blocktime = func.timestamp(conf['ipblock'])
+			log = func.sql(lite,"SELECT timecode FROM log WHERE ipAddr = '%s' AND answere = 'X' AND timecode > '%s'" % (ipaddr,blocktime))
+			print log
+			if(len(log) < 3):
+				que = "SELECT uPass, uSalt, uID FROM users WHERE uName LIKE '%s'" % post["uName"][0]
+				data = func.sql(lite,que)
+				if len(data) == 1:
+					# Prüft ob Passwort stimmt
+					nMD5 = "%s%s" % (post["uPass"][0],data[0][1])
+					if func.md5(nMD5) == data[0][0]:
+						# erstelle neues uSalt und uPass
+						uSalt = func.random(75)
+						nMD5 = "%s%s" % (post["uPass"][0],uSalt)
+						uPass = func.md5(nMD5)
+						session = func.random(32)
+						expire = func.timestamp(conf['expire'])
+						que = "UPDATE users SET uSalt = '%s',uPass='%s',uSession='%s',expire='%s'" % (uSalt,uPass,session,expire)
+						if func.sql(lite,que):
+							# db update erfolgreich
+							session = session
+							access = True
+						else:
+							# update fehlgeschlagen
+							self.wfile.write('''<p>Schreiben in DB Fehlgeschlagen</p>''')
 					else:
-						# update fehlgeschlagen
-						self.wfile.write('''<p>Schreiben in DD Fehlgeschlagen</p>''')
-						#TODO
-						pass
+						# Passwort stimmt nicht
+						self.wfile.write('''<p>Passwort nicht Korrekt</p>''')
+						
+						dellog = func.timestamp(conf['dellog'])
+						now = func.timestamp()
+						func.sql(lite,"DELETE FROM log WHERE timecode < '%s';" % dellog)
+						func.sql(lite,"INSERT INTO log (tokenID, answere, timecode, ipAddr) VALUES  ('fffffffffffffffffffffffffffffffff','X','%s','%s')" % (now,ipaddr));
 				else:
-					# Passwort stimmt nicht
-					self.wfile.write('''<p>Passwort nicht Korrekt</p>''')
-					#TODO
-					pass
+					#user existiert nicht
+					self.wfile.write('''<p>User nicht Korrekt</p>''')
+
+					dellog = func.timestamp(conf['dellog'])
+					now = func.timestamp()
+					func.sql(lite,"DELETE FROM log WHERE timecode < '%s';" % dellog)
+					func.sql(lite,"INSERT INTO log (tokenID, answere, timecode, ipAddr) VALUES  ('fffffffffffffffffffffffffffffffff','X','%s','%s')" % (now,ipaddr));
 			else:
-				#user existiert nicht
-				self.wfile.write('''<p>User nicht Korrekt</p>''')
-				#TODO
-				pass
+				#ip gesperrt
+				self.wfile.write('''<p>Die IP-Adresse wurde gesperrt</p>''')
 		else:
 			#token prüfen und gleich expire erneuern
 			print get

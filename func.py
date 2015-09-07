@@ -25,7 +25,6 @@ def random(num):
 # verbindet die datenbank
 #ungeprüft
 def sql_connect(file):
-	print file
 	con = lite.connect(file)
 	return con
 
