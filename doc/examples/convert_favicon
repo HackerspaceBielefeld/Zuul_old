@@ -1,0 +1,2 @@
+# Shortest ImageMagick command line call to convert any image file to a favicon
+convert "$1" -define icon:auto-resize=64,48,32,16 favicon.ico
