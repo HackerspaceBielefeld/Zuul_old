@@ -102,7 +102,6 @@ class myHandler(BaseHTTPRequestHandler):
 				self.wfile.write('''<p>Die IP-Adresse wurde gesperrt</p>''')
 		else:
 			#token prüfen und gleich expire erneuern
-			print get
 			if get.has_key('s'):
 				if get.has_key("logout"):
 					expire = '0000-00-00- 00:00:00'
@@ -162,7 +161,14 @@ class myHandler(BaseHTTPRequestHandler):
 					#TODO
 					
 				if get["user"] == 'list':
-					pass
+					data = func.sql(lite,"SELECT uId,uName,uPass FROM users ORDER BY uName")
+					self.wfile.write('''<table><thead><tr><th>ID</th><th>Name</th><th>Optionen</th></tr></thead><tbody>''')
+					for d in data:
+						if d[2] != '':
+							ismod = '*'
+						else:
+							ismod = ''
+						self.wfile.write("<tr><td>"+str(d[0])+"</td><td>"+d[1]+" "+ismod+"</td><td>[Edit][De/Aktivieren][L&ouml;schen]</td></tr>")
 					#TODO
 					
 				
