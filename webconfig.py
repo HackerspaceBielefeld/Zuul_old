@@ -59,7 +59,6 @@ class myHandler(BaseHTTPRequestHandler):
 			ipaddr = func.no_inject(self.client_address[0])
 			blocktime = func.timestamp(conf['ipblock'])
 			log = func.sql(lite,"SELECT timecode FROM log WHERE ipAddr = '%s' AND answere = 'X' AND timecode > '%s'" % (ipaddr,blocktime))
-			print log
 			if(len(log) < 3):
 				que = "SELECT uPass, uSalt, uID FROM users WHERE uName LIKE '%s'" % post["uName"][0]
 				data = func.sql(lite,que)
@@ -111,7 +110,6 @@ class myHandler(BaseHTTPRequestHandler):
 				now = func.timestamp()
 				session = func.no_inject(get['s'])
 				que = "UPDATE users SET expire='%s' WHERE uSession = '%s'" % (expire,session)
-				print que
 				if func.sql(lite,que):
 					if get.has_key("logout"):
 						self.wfile.write('''<p>Session beendet.</p>''')
@@ -137,6 +135,22 @@ class myHandler(BaseHTTPRequestHandler):
 			<a href="/logout/index/s/%s">Logout</a>
 			<hr/>''' % (session,session,session,session)
 			self.wfile.write(navi)	
+			
+								
+				
+			if get.has_key("token"):
+				#token list gibts in user details schon
+				
+				#token create
+				
+				#token deleter
+				pass
+				#TODO
+				
+			if get.has_key("log"):
+				#todo
+				pass
+			
 			if get.has_key('user'):
 				if get["user"] == '':
 					get["user"] = 'list'
@@ -150,14 +164,10 @@ class myHandler(BaseHTTPRequestHandler):
 						self.wfile.write(content)
 						
 				if get["user"] == 'edit':
-					pass
+					self.wfile.write("User edit")
 					#TODO
 				if get["user"] == 'del':
-					pass
-					#TODO
-				
-				if get["user"] == 'detail':
-					pass
+					self.wfile.write("User del")
 					#TODO
 					
 				if get["user"] == 'list':
@@ -168,21 +178,9 @@ class myHandler(BaseHTTPRequestHandler):
 							ismod = '*'
 						else:
 							ismod = ''
-						self.wfile.write("<tr><td>"+str(d[0])+"</td><td>"+d[1]+" "+ismod+"</td><td>[Edit][De/Aktivieren][L&ouml;schen]</td></tr>")
+						self.wfile.write("<tr><td>"+str(d[0])+"</td><td>"+d[1]+" "+ismod+"</td><td>[<a href='/user/edit/id/"+str(d[0])+"/s/"+session+"'>Edit</a>][De/Aktivieren][<a href='/user/edit/id/"+str(d[0])+"/s/"+session+"'>L&ouml;schen</a>]</td></tr>")
 					#TODO
-					
-				
-			if get.has_key("token"):
-				#token list gibts in user details schon
-				
-				#token create
-				
-				#token deleter
-				pass
-				
-			if get.has_key("log"):
-				#todo
-				pass
+
 
 		else:
 			# hier sieht man nur wenn man abgemeldet ist
