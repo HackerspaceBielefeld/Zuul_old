@@ -8,7 +8,7 @@ func.sql(con,'''CREATE TABLE log (
   tokenID varchar(32) NOT NULL,
   answere varchar(1) NOT NULL ,
   timecode timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  ipAddr varchar(42) NULL DEFAULT ''
+  addInfo varchar(75) NULL DEFAULT ''
 )''')
 print "Erstelle token tabelle"
 func.sql(con,'''CREATE TABLE token (

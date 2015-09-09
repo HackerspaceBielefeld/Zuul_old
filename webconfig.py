@@ -58,7 +58,7 @@ class myHandler(BaseHTTPRequestHandler):
 			
 			ipaddr = func.no_inject(self.client_address[0])
 			blocktime = func.timestamp(conf['ipblock'])
-			log = func.sql(lite,"SELECT timecode FROM log WHERE ipAddr = '%s' AND answere = 'X' AND timecode > '%s'" % (ipaddr,blocktime))
+			log = func.sql(lite,"SELECT timecode FROM log WHERE addInfo = '%s' AND answere = 'X' AND timecode > '%s'" % (ipaddr,blocktime))
 			if(len(log) < 3):
 				que = "SELECT uPass, uSalt, uID FROM users WHERE uName LIKE '%s'" % post["u"][0]
 				data = func.sql(lite,que)
