@@ -60,15 +60,15 @@ class myHandler(BaseHTTPRequestHandler):
 			blocktime = func.timestamp(conf['ipblock'])
 			log = func.sql(lite,"SELECT timecode FROM log WHERE ipAddr = '%s' AND answere = 'X' AND timecode > '%s'" % (ipaddr,blocktime))
 			if(len(log) < 3):
-				que = "SELECT uPass, uSalt, uID FROM users WHERE uName LIKE '%s'" % post["uName"][0]
+				que = "SELECT uPass, uSalt, uID FROM users WHERE uName LIKE '%s'" % post["u"][0]
 				data = func.sql(lite,que)
 				if len(data) == 1:
 					# Prüft ob Passwort stimmt
-					nMD5 = "%s%s" % (post["uPass"][0],data[0][1])
+					nMD5 = "%s%s" % (post["p"][0],data[0][1])
 					if func.md5(nMD5) == data[0][0]:
 						# erstelle neues uSalt und uPass
 						uSalt = func.random(75)
-						nMD5 = "%s%s" % (post["uPass"][0],uSalt)
+						nMD5 = "%s%s" % (post["p"][0],uSalt)
 						uPass = func.md5(nMD5)
 						session = func.random(32)
 						expire = func.timestamp(conf['expire'])
@@ -139,7 +139,7 @@ class myHandler(BaseHTTPRequestHandler):
 								
 				
 			if get.has_key("token"):
-				#token list gibts in user details schon
+				#token search
 				
 				#token create
 				
@@ -160,7 +160,7 @@ class myHandler(BaseHTTPRequestHandler):
 				if get["user"] == 'create':
 					if post.has_key("submit"):
 						uName = func.no_inject(post['uName'][0])
-						if(post['uPass'] != ''):
+						if(post['uPass'][0] != ''):
 							uSalt = func.random(75)
 							uPass = func.md5(post['uPass'][0]+uSalt)
 						else:
@@ -180,11 +180,16 @@ class myHandler(BaseHTTPRequestHandler):
 					self.wfile.write("User edit "+str(get['id']))
 					id = func.no_inject(get['id'])
 					#user daten werden in form, geladen
+					ud = func.sql(lite,"SELECT * FROM users WHERE uID = %s" % id)
+					if len(ud) == 1:
+						self.wfile.write(str(ud[0]))
 					#TODO
 					#zugehörige tokens gelistet
-					data = func.sql(lite,"SELECT * FROM token WHERE uID = %s" & id)
+					data = func.sql(lite,"SELECT * FROM token WHERE userID = '%s';" % id)
 					for d in data:
 						print d
+					#TODO
+					
 					
 				if get["user"] == 'del':
 					self.wfile.write("User del "+str(get['id']))
@@ -199,7 +204,7 @@ class myHandler(BaseHTTPRequestHandler):
 							ismod = '*'
 						else:
 							ismod = ''
-						self.wfile.write("<tr><td>"+str(d[0])+"</td><td>"+d[1]+" "+ismod+"</td><td>[<a href='/user/edit/id/"+str(d[0])+"/s/"+session+"'>Edit</a>][De/Aktivieren][<a href='/user/edit/id/"+str(d[0])+"/s/"+session+"'>L&ouml;schen</a>]</td></tr>")
+						self.wfile.write("<tr><td>"+str(d[0])+"</td><td>"+d[1]+" "+ismod+"</td><td>[<a href='/user/edit/id/"+str(d[0])+"/s/"+session+"'>Edit</a>][De/Aktivieren][<a href='/user/del/id/"+str(d[0])+"/s/"+session+"'>L&ouml;schen</a>]</td></tr>")
 					#TODO
 					self.wfile.write("</tbody></table>")
 

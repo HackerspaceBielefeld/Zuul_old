@@ -36,12 +36,12 @@ def sql(con,que):
 		cur.execute(str(que))
 		return cur.fetchall()
 	else:
-		try:
+		#try:
 			cur.execute(str(que))
 			con.commit()
 			return True
-		except:
-			return False
+		#except:
+		#	return False
 
 # schließt db
 def sql_close(con):
@@ -52,5 +52,6 @@ def sql_close(con):
 
 # entfernt gefährliche zeichen
 #TODO
-def no_inject(str):
-	return str.replace("'","`");
+def no_inject(inp):
+	inp = str(inp)
+	return inp.replace("'","`");

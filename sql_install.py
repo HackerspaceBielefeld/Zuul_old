@@ -15,7 +15,8 @@ func.sql(con,'''CREATE TABLE token (
   tID varchar(32) NOT NULL,
   userID int(11) NOT NULL,
   tKey varchar(32) NOT NULL,
-  tActive int(1) NOT NULL DEFAULT '1'
+  tActive int(1) NOT NULL DEFAULT '1',
+  lastUsed timestamp NOT NULL DEFAULT '0000-00-00 00:00:00'
 )''')
 
 print "Erstelle users Tabelle"
