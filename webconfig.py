@@ -142,7 +142,20 @@ class myHandler(BaseHTTPRequestHandler):
 				#token search
 				
 				#token create
-				
+				if get['token'] == 'add':
+					if get.has_key("tid"):
+						tid = func.no_inject(get['tid'])
+						id = func.no_inject(get['id'])
+						if func.sql(lite,"INSERT INTO token (tID,userID,tKey) VALUES ('"+tid+"','"+id+"','')"):
+							self.wfile.write('''<p>Anlegen erfolgreich</p>''')
+						else:
+							self.wfile.write('''<p>Anlegen fehlgeschlagen</p>''')
+						
+						get['user'] = 'list'
+					else:
+						data = func.sql(lite,"SELECT tokenID,timecode FROM log WHERE answere = 'D' ORDER BY timecode DESC LIMIT 10")
+						for d in data:
+							self.wfile.write("[<a href='/token/add/id/"+get['id']+"/tid/"+d[0]+"/s/"+session+"'>Add to User</a>] "+ d[0] +"("+d[1]+")")
 				#token deleter
 				pass
 				#TODO
@@ -180,15 +193,18 @@ class myHandler(BaseHTTPRequestHandler):
 					self.wfile.write("User edit "+str(get['id']))
 					id = func.no_inject(get['id'])
 					#user daten werden in form, geladen
+					self.wfile.write("<table><thead><tr><th>Feld</th><th>Daten</th></tr></thead><tbody>")
 					ud = func.sql(lite,"SELECT * FROM users WHERE uID = %s" % id)
 					if len(ud) == 1:
-						self.wfile.write(str(ud[0]))
+						self.wfile.write("<tr><td>ID</td><td>"+str(ud[0][0])+"</td></tr>")
 					#TODO
+					self.wfile.write("</tbody></table>[<a href='/token/add/id/"+id+"/s/"+session+"'>AddToken</a>]<table><thead><tr><th>ID</th><th>zuletzt benutzt</th><th>Optionen</th></tr></thead><tbody>")
 					#zugehörige tokens gelistet
 					data = func.sql(lite,"SELECT * FROM token WHERE userID = '%s';" % id)
 					for d in data:
-						print d
-					#TODO
+						self.wfile.write(str(d))
+						#TODO
+					self.wfile.write("</tbody></table>")
 					
 					
 				if get["user"] == 'del':
