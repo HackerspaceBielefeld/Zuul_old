@@ -135,10 +135,10 @@ class myHandler(BaseHTTPRequestHandler):
 			if access == True:
 				# hier kommt alles rein was nur erreichbar ist, wenn man angemeldet ist
 				# Navigation
-				navi = '''<a href="/stats/index/s/%s">Statistik</a>
+				navi = '''<div><a href="/stats/index/s/%s">Statistik</a>
 				<a href="/user/list/s/%s">Userliste</a>
 				<a href="/user/create/s/%s">User erstellen</a>
-				<a href="/logout/index/s/%s">Logout</a>
+				<a href="/logout/index/s/%s">Logout</a></div>
 				<hr/>''' % (session,session,session,session)
 				self.wfile.write(bytes(navi,"UTF-8"))	
 				
@@ -191,7 +191,7 @@ class myHandler(BaseHTTPRequestHandler):
 							else:
 								self.wfile.write(bytes('''<p>Anlegen fehlgeschlagen</p>''',"UTF-8"))
 						else:
-							content = '''<form action="/user/create/s/%s" method="post">Name<input type="text" name="uName" /><br/>Passwort <input type="password" name="uPass" />(Nur ausfüllen, wenn der user admin zugriff haben soll.)<br/>Member-ID<input type="text" name="uMember" /><br/><input type="submit" name="submit" value="Erstellen" /></form>''' % session
+							content = '''<form action="/user/create/s/%s" method="post"><div><span>Name</span><input type="text" name="uName" /></div><div><span>Passwort</span><input type="password" name="uPass" />(Nur ausfüllen, wenn der user admin zugriff haben soll.)</div><div><span>Member-ID</span><input type="text" name="uMember" /></div><div><input type="submit" name="submit" value="Erstellen" /></div></form>''' % session
 							self.wfile.write(bytes(content,"UTF-8"))
 					
 					#ungeprüft				
@@ -213,7 +213,6 @@ class myHandler(BaseHTTPRequestHandler):
 								self.wfile.write(bytes('''<p>Editieren fehlgeschlagen</p>''',"UTF-8"))				
 							get["user"] = 'edit'
 						else:
-							self.wfile.write(bytes("User edit "+str(get['id']),"UTF-8"))
 							id = func.no_inject(get['id'])
 							#user daten werden in form, geladen
 							self.wfile.write(bytes("<table><thead><tr><th>Feld</th><th>Daten</th></tr></thead><tbody>","UTF-8"))
@@ -223,7 +222,7 @@ class myHandler(BaseHTTPRequestHandler):
 									admin = 'User'
 								else:
 									admin = 'Admin'
-								content = '''<form action="/user/edit/id/%s/s/%s" method="post"><span>Name</span><input type="text" name="uName" value="%s" /><br/>Gruppe: %s<br/><span>Passwort</span><input type="password" name="uPass" />(bleibt unverändert wenn leer.)<br/><span>Member-ID</span><input type="text" name="uMember" value="%s" /><br/><input type="submit" name="submit" value="Erstellen" /></form>''' % (id,session,ud[0][0],admin,ud[0][2])
+								content = '''<form action="/user/edit/id/%s/s/%s" method="post"><div><span>Name</span><input type="text" name="uName" value="%s" /></div><div><span>Gruppe:</span> %s</div><div><span>Passwort</span><input type="password" name="uPass" />(bleibt unverändert wenn leer.)</div><div><span>Member-ID</span><input type="text" name="uMember" value="%s" /></div><div><input type="submit" name="submit" value="Erstellen" /></div></form>''' % (id,session,ud[0][0],admin,ud[0][2])
 								self.wfile.write(bytes(content,"UTF-8"))
 							self.wfile.write(bytes("</tbody></table>[<a href='/token/add/id/"+id+"/s/"+session+"'>AddToken</a>]<table><thead><tr><th>ID</th><th>zuletzt benutzt</th><th>Optionen</th></tr></thead><tbody>","UTF-8"))
 							#zugehörige tokens gelistet
@@ -238,8 +237,14 @@ class myHandler(BaseHTTPRequestHandler):
 						
 					#TODO
 					if get["user"] == 'del':
-						self.wfile.write("User del "+str(get['id']))
-						#TODO
+						id = func.no_inject(get['id'])
+						if bytes('submit',"UTF-8") in post.keys():
+							func.sql(lite,"DELETE FROM token WHERE userID = '%s'" % id)
+							func.sql(lite,"DELETE FROM users WHERE uID = '%s'" % id)
+							get["user"] = 'list'
+						else:
+							self.wfile.write(bytes("<form action='/user/del/id/"+id+"/s/"+session+"' method='post'>Sicher? <input type='submit' name='submit' value='Ja, klar' /></form>","UTF-8"))
+						
 						
 					#ungeprüft
 					if get["user"] == 'list':
@@ -257,15 +262,15 @@ class myHandler(BaseHTTPRequestHandler):
 				# hier sieht man nur wenn man abgemeldet ist
 				# Navigation
 				self.wfile.write(bytes('''
-				<a href="/stats">Statistik</a> 
-				<a href="/login">Login</a> 
+				<div><a href="/stats">Statistik</a> 
+				<a href="/login">Login</a> </div>
 				<hr/>''',"UTF-8"))	
 				
 				if 'login' in get.keys():
 					self.wfile.write(bytes('''<form action="" method="post">
-						User: <input type="text" name="u" /><br/>
-						Pass: <input type="password" name="p" /></br>
-						<input type="submit" name="submit" value="Login" />
+						<div><span>User:</span> <input type="text" name="u" /></div>
+						<div><span>Pass:</span> <input type="password" name="p" /></div>
+						<div><input type="submit" name="submit" value="Login" /></div>
 					</form>''',"UTF-8"))
 				
 				#TODO
@@ -279,7 +284,7 @@ class myHandler(BaseHTTPRequestHandler):
 			pass
 			
 		if 'style.css' in get.keys():
-			self.wfile.write(bytes('''p {background-color: #000000; display: block; color: #ffffff;} span {width: 200px;} ''',"UTF-8"))
+			self.wfile.write(bytes('''p {background-color: #000000; display: block; color: #ffffff;} span {display: block; width: 200px; float:left;} input {display:block; float:left;} div{width:100%; clear: both;}''',"UTF-8"))
 			#todo
 		
 		#Aufräumen
