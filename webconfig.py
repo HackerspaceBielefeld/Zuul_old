@@ -175,52 +175,53 @@ class myHandler(BaseHTTPRequestHandler):
 				if get["user"] == 'create':
 					if post.has_key("submit"):
 						uName = func.no_inject(post['uName'][0])
+						uMember = func.no_inject(post['uMember'][0])
 						if(post['uPass'][0] != ''):
 							uSalt = func.random(75)
 							uPass = func.md5(post['uPass'][0]+uSalt)
 						else:
 							uSalt = ''
 							uPass = ''
-						if func.sql(lite,"INSERT INTO users (uName,uPass,uSalt,uSession) VALUES ('"+uName+"','"+uPass+"','"+uSalt+"','')"):
+						if func.sql(lite,"INSERT INTO users (uName,uPass,uSalt,uMember,uSession) VALUES ('"+uName+"','"+uPass+"','"+uSalt+"','"+uMember+"','')"):
 							self.wfile.write('''<p>User angelegt</p>''')
 							get["id"] = func.sql(lite,"SELECT uID FROM users ORDER BY uID DESC LIMIT 1")[0][0]					
 							get["user"] = 'edit'
 						else:
 							self.wfile.write('''<p>Anlegen fehlgeschlagen</p>''')
 					else:
-						content = '''<form action="/user/create/s/%s" method="post">Name<input type="text" name="uName" /><br/>Passwort <input type="password" name="uPass" />(Nur ausfüllen, wenn der user admin zugriff haben soll.)<br/><input type="submit" name="submit" value="Erstellen" /></form>''' % session
+						content = '''<form action="/user/create/s/%s" method="post">Name<input type="text" name="uName" /><br/>Passwort <input type="password" name="uPass" />(Nur ausfüllen, wenn der user admin zugriff haben soll.)<br/>Member-ID<input type="text" name="uMember" /><br/><input type="submit" name="submit" value="Erstellen" /></form>''' % session
 						self.wfile.write(content)
-						
+				
+				#ungeprüft				
 				if get["user"] == 'edit':
 					if post.has_key("submit"):
 						uName = func.no_inject(post['uName'][0])
+						uMember = func.no_inject(post['uMember'][0])
 						id = func.no_inject(get['id'])
 						if(post['uPass'][0] != ''):
 							uSalt = func.random(75)
 							uPass = func.md5(post['uPass'][0]+uSalt)
-							res = func.sql(lite,"UPDATE users SET uName = '"+uName+"',uPass = '"+uPass+"',uSalt = '"+uSalt+"' WHERE uID = '"+id"'")
+							res = func.sql(lite,"UPDATE users SET uName = '"+uName+"',uPass = '"+uPass+"',uSalt = '"+uSalt+"',uMember = '"+uMember+"' WHERE uID = '"+id"'")
 						else:
-							res = func.sql(lite,"UPDATE users SET uName = '"+uName+"' WHERE uID = '"+id"'")
+							res = func.sql(lite,"UPDATE users SET uName = '"+uName+"',uMember = '"+uMember+"' WHERE uID = '"+id"'")
 
-						
-						if func.sql(lite,"INSERT INTO users (uName,uPass,uSalt,uSession) VALUES ('"+uName+"','"+uPass+"','"+uSalt+"','')"):
+						if res == True:
 							self.wfile.write('''<p>User editiert</p>''')
-							get["id"] = func.sql(lite,"SELECT uID FROM users ORDER BY uID DESC LIMIT 1")[0][0]					
-							get["user"] = 'edit'
 						else:
-							self.wfile.write('''<p>Editieren fehlgeschlagen</p>''')
+							self.wfile.write('''<p>Editieren fehlgeschlagen</p>''')				
+						get["user"] = 'edit'
 					else:
 						self.wfile.write("User edit "+str(get['id']))
 						id = func.no_inject(get['id'])
 						#user daten werden in form, geladen
 						self.wfile.write("<table><thead><tr><th>Feld</th><th>Daten</th></tr></thead><tbody>")
-						ud = func.sql(lite,"SELECT uName, uPass FROM users WHERE uID = %s" % id)
+						ud = func.sql(lite,"SELECT uName, uPass, uMember FROM users WHERE uID = %s" % id)
 						if len(ud) == 1:
 							if ud[0][1] == '':
 								admin = 'User'
 							else:
 								admin = 'Admin'
-							content = '''<form action="/user/edit/id/%s/s/%s" method="post">Name<input type="text" name="uName" value="%s" /><br/>Gruppe: %s<br/>Passwort <input type="password" name="uPass" />(bleibt unverändert wenn leer.)<br/><input type="submit" name="submit" value="Erstellen" /></form>''' % (id,session,ud[0][0],admin)
+							content = '''<form action="/user/edit/id/%s/s/%s" method="post">Name<input type="text" name="uName" value="%s" /><br/>Gruppe: %s<br/>Passwort <input type="password" name="uPass" />(bleibt unverändert wenn leer.)<br/>Member-ID yinput type="text" name="uMember" value="%s" /><input type="submit" name="submit" value="Erstellen" /></form>''' % (id,session,ud[0][0],admin,ud[0][2])
 							self.wfile.write(content)
 						self.wfile.write("</tbody></table>[<a href='/token/add/id/"+id+"/s/"+session+"'>AddToken</a>]<table><thead><tr><th>ID</th><th>zuletzt benutzt</th><th>Optionen</th></tr></thead><tbody>")
 						#zugehörige tokens gelistet
@@ -236,7 +237,7 @@ class myHandler(BaseHTTPRequestHandler):
 					
 				#ungeprüft
 				if get["user"] == 'list':
-					data = func.sql(lite,"SELECT uId,uName,uPass FROM users ORDER BY uName")
+					data = func.sql(lite,"SELECT uId,uName,uPass,uMember FROM users ORDER BY uName")
 					self.wfile.write('''<table><thead><tr><th>ID</th><th>Name</th><th>Optionen</th></tr></thead><tbody>''')
 					for d in data:
 						if d[2] != '':
