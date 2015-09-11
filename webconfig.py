@@ -50,9 +50,10 @@ class myHandler(BaseHTTPRequestHandler):
 		self.send_response(200)
 		self.send_header('Content-Type','text/html')
 		self.end_headers()
-		self.wfile.write("<html><head><title>Web-Administration Zuul</title></head><body>")	
+		self.wfile.write("<html><head><title>Web-Administration Zuul</title><link href='style.css' type='text/css' rel='stylesheet'/></head><body>")	
 		lite = func.sql_connect(conf['db_path'])
 
+		# session erzeugen
 		if post.has_key('u') and post.has_key('p'):
 			# holt User anhand des usernamens
 			
@@ -100,6 +101,7 @@ class myHandler(BaseHTTPRequestHandler):
 				#ip gesperrt
 				self.wfile.write('''<p>Die IP-Adresse wurde gesperrt</p>''')
 		else:
+		# laufende session
 			#token prüfen und gleich expire erneuern
 			if get.has_key('s'):
 				if get.has_key("logout"):
@@ -190,23 +192,44 @@ class myHandler(BaseHTTPRequestHandler):
 						self.wfile.write(content)
 						
 				if get["user"] == 'edit':
-					self.wfile.write("User edit "+str(get['id']))
-					id = func.no_inject(get['id'])
-					#user daten werden in form, geladen
-					self.wfile.write("<table><thead><tr><th>Feld</th><th>Daten</th></tr></thead><tbody>")
-					ud = func.sql(lite,"SELECT * FROM users WHERE uID = %s" % id)
-					if len(ud) == 1:
-						self.wfile.write("<tr><td>ID</td><td>"+str(ud[0][0])+"</td></tr>")
-					#TODO
-					self.wfile.write("</tbody></table>[<a href='/token/add/id/"+id+"/s/"+session+"'>AddToken</a>]<table><thead><tr><th>ID</th><th>zuletzt benutzt</th><th>Optionen</th></tr></thead><tbody>")
-					#zugehörige tokens gelistet
-					data = func.sql(lite,"SELECT * FROM token WHERE userID = '%s';" % id)
-					for d in data:
-						self.wfile.write(str(d))
-						#TODO
-					self.wfile.write("</tbody></table>")
-					
-					
+					if post.has_key("submit"):
+						uName = func.no_inject(post['uName'][0])
+						id = func.no_inject(get['id'])
+						if(post['uPass'][0] != ''):
+							uSalt = func.random(75)
+							uPass = func.md5(post['uPass'][0]+uSalt)
+							res = func.sql(lite,"UPDATE users SET uName = '"+uName+"',uPass = '"+uPass+"',uSalt = '"+uSalt+"' WHERE uID = '"+id"'")
+						else:
+							res = func.sql(lite,"UPDATE users SET uName = '"+uName+"' WHERE uID = '"+id"'")
+
+						
+						if func.sql(lite,"INSERT INTO users (uName,uPass,uSalt,uSession) VALUES ('"+uName+"','"+uPass+"','"+uSalt+"','')"):
+							self.wfile.write('''<p>User editiert</p>''')
+							get["id"] = func.sql(lite,"SELECT uID FROM users ORDER BY uID DESC LIMIT 1")[0][0]					
+							get["user"] = 'edit'
+						else:
+							self.wfile.write('''<p>Editieren fehlgeschlagen</p>''')
+					else:
+						self.wfile.write("User edit "+str(get['id']))
+						id = func.no_inject(get['id'])
+						#user daten werden in form, geladen
+						self.wfile.write("<table><thead><tr><th>Feld</th><th>Daten</th></tr></thead><tbody>")
+						ud = func.sql(lite,"SELECT uName, uPass FROM users WHERE uID = %s" % id)
+						if len(ud) == 1:
+							if ud[0][1] == '':
+								admin = 'User'
+							else:
+								admin = 'Admin'
+							content = '''<form action="/user/edit/id/%s/s/%s" method="post">Name<input type="text" name="uName" value="%s" /><br/>Gruppe: %s<br/>Passwort <input type="password" name="uPass" />(bleibt unverändert wenn leer.)<br/><input type="submit" name="submit" value="Erstellen" /></form>''' % (id,session,ud[0][0],admin)
+							self.wfile.write(content)
+						self.wfile.write("</tbody></table>[<a href='/token/add/id/"+id+"/s/"+session+"'>AddToken</a>]<table><thead><tr><th>ID</th><th>zuletzt benutzt</th><th>Optionen</th></tr></thead><tbody>")
+						#zugehörige tokens gelistet
+						data = func.sql(lite,"SELECT * FROM token WHERE userID = '%s';" % id)
+						for d in data:
+							self.wfile.write(str(d))
+							#TODO
+						self.wfile.write("</tbody></table>")
+						
 				if get["user"] == 'del':
 					self.wfile.write("User del "+str(get['id']))
 					#TODO
@@ -223,8 +246,6 @@ class myHandler(BaseHTTPRequestHandler):
 						self.wfile.write("<tr><td>"+str(d[0])+"</td><td>"+d[1]+" "+ismod+"</td><td>[<a href='/user/edit/id/"+str(d[0])+"/s/"+session+"'>Edit</a>][De/Aktivieren][<a href='/user/del/id/"+str(d[0])+"/s/"+session+"'>L&ouml;schen</a>]</td></tr>")
 					#TODO
 					self.wfile.write("</tbody></table>")
-
-
 		else:
 			# hier sieht man nur wenn man abgemeldet ist
 			# Navigation
@@ -252,7 +273,7 @@ class myHandler(BaseHTTPRequestHandler):
 			pass
 			
 		if get.has_key("style.css"):
-			pass
+			self.wfile.write('''p {background-color: #000000; display: block; color: #ffffff;}''')
 			#todo
 		
 		#Aufräumen
