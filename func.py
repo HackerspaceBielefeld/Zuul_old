@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # coding: utf8
 
 from random import choice
@@ -7,7 +7,8 @@ import hashlib
 from time import *
 
 def md5(s):
-	return hashlib.md5(s).hexdigest()
+	ss = str(s).encode("utf-8")
+	return hashlib.md5(ss).hexdigest()
 
 def timestamp(offset=0):
 	t = int(time()) + int(offset)
