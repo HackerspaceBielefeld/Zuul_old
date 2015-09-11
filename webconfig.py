@@ -225,12 +225,16 @@ class myHandler(BaseHTTPRequestHandler):
 							self.wfile.write(content)
 						self.wfile.write("</tbody></table>[<a href='/token/add/id/"+id+"/s/"+session+"'>AddToken</a>]<table><thead><tr><th>ID</th><th>zuletzt benutzt</th><th>Optionen</th></tr></thead><tbody>")
 						#zugehörige tokens gelistet
-						data = func.sql(lite,"SELECT * FROM token WHERE userID = '%s';" % id)
+						data = func.sql(lite,"SELECT tID,tActive,lastUsed FROM token WHERE userID = '%s';" % id)
 						for d in data:
-							self.wfile.write(str(d))
-							#TODO
+							if d[1] == 1:
+								active = 'Aktiv'
+							else:
+								active = 'Deaktiviert'
+							self.wfile.write("<tr><td>"+d[0]+"</td><td>"+d[3]+"</td><td>"+active+"</td><td>[De/Aktivieren][L&ouml;schen][Weitergeben]</td></tr>"
 						self.wfile.write("</tbody></table>")
-						
+					
+				#TODO
 				if get["user"] == 'del':
 					self.wfile.write("User del "+str(get['id']))
 					#TODO
