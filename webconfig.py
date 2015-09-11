@@ -146,6 +146,7 @@ class myHandler(BaseHTTPRequestHandler):
 					#token search
 					
 					#token create
+					#ungeprüft
 					if get['token'] == 'add':
 						if 'tid' in get.keys():
 							tid = func.no_inject(get['tid'])
@@ -160,8 +161,26 @@ class myHandler(BaseHTTPRequestHandler):
 							data = func.sql(lite,"SELECT tokenID,timecode FROM log WHERE answere = 'D' ORDER BY timecode DESC LIMIT 10")
 							for d in data:
 								self.wfile.write(bytes("[<a href='/token/add/id/"+get['id']+"/tid/"+d[0]+"/s/"+session+"'>Add to User</a>] "+ d[0] +"("+d[1]+")","UTF-8"))
+								
+					
 					#token deleter
-					pass
+					if get['token'] == 'del':
+						if 'tid' in get.keys():
+							tid = func.no_inject(get['tid'])
+							if func.sql(lite,"DELETE FROM token WHERE tID = '"+tid+"';"):
+								self.wfile.write(bytes('''<p>L&ouml;schen erfolgreich</p>''',"UTF-8"))
+							else:
+								self.wfile.write(bytes('''<p>L&ouml;schen fehlgeschlagen</p>''',"UTF-8"))
+							
+							get['user'] = 'list'
+						else:
+							data = func.sql(lite,"SELECT tokenID,timecode FROM log WHERE answere = 'D' ORDER BY timecode DESC LIMIT 10")
+							for d in data:
+								self.wfile.write(bytes("[<a href='/token/add/id/"+get['id']+"/tid/"+d[0]+"/s/"+session+"'>Add to User</a>] "+ d[0] +"("+d[1]+")","UTF-8"))
+						
+					#token an anderen user geben
+					if get['token'] == 'change':
+						pass
 					#TODO
 					
 				if 'log' in get.keys():
@@ -234,8 +253,8 @@ class myHandler(BaseHTTPRequestHandler):
 									active = 'Deaktiviert'
 								self.wfile.write(bytes("<tr><td>"+d[0]+"</td><td>"+d[3]+"</td><td>"+active+"</td><td>[De/Aktivieren][L&ouml;schen][Weitergeben]</td></tr>","UTF-8"))
 							self.wfile.write(bytes("</tbody></table>","UTF-8"))
-						
-					#TODO
+					
+					#geprüft
 					if get["user"] == 'del':
 						id = func.no_inject(get['id'])
 						if bytes('submit',"UTF-8") in post.keys():
@@ -244,8 +263,7 @@ class myHandler(BaseHTTPRequestHandler):
 							get["user"] = 'list'
 						else:
 							self.wfile.write(bytes("<form action='/user/del/id/"+id+"/s/"+session+"' method='post'>Sicher? <input type='submit' name='submit' value='Ja, klar' /></form>","UTF-8"))
-						
-						
+					
 					#ungeprüft
 					if get["user"] == 'list':
 						data = func.sql(lite,"SELECT uId,uName,uPass,uMember FROM users ORDER BY uName")
@@ -277,18 +295,17 @@ class myHandler(BaseHTTPRequestHandler):
 				self.wfile.write(bytes('''Abgemeldet''',"UTF-8"))
 		
 		if 'stats' in get.keys():
-			self.wfile.write(bytes('''Statistik''',"UTF-8"))
-			
+			self.wfile.write(bytes('''Statistik<br/> was soll hier alles rein????''',"UTF-8"))
+			#todo
 		if 'favicon.ico' in get.keys():
 			#todo
 			pass
 			
+		#ungeprüft
 		if 'style.css' in get.keys():
 			self.wfile.write(bytes('''p {background-color: #000000; display: block; color: #ffffff;} span {display: block; width: 200px; float:left;} input {display:block; float:left;} div{width:100%; clear: both;}''',"UTF-8"))
-			#todo
 		
 		#Aufräumen
-		
 		if html == True:
 			self.wfile.write(bytes("</body></html>","UTF-8"))
 			func.sql_close(lite);
