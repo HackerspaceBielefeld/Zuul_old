@@ -37,12 +37,12 @@ def sql(con,que):
 		cur.execute(str(que))
 		return cur.fetchall()
 	else:
-		#try:
+		try:
 			cur.execute(str(que))
 			con.commit()
 			return True
-		#except:
-		#	return False
+		except:
+			return False
 
 # schließt db
 def sql_close(con):
