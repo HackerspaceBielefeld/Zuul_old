@@ -3,7 +3,8 @@
 #addons nachladen
 import _mysql
 import RPi.GPIO as GPIO
-import inc.func
+import func
+from mplayer import Player, CmdPrefix
 
 
 # schreibt den neuen key auf die karte
@@ -50,6 +51,15 @@ def output(pin,val,time=False):
 		GPIO.output(pins[pin],!val)
 	return True
 
+# spielt den angegebenen track einmal abfrage
+# ungeprüft
+# benötigt den mplayer, liegt im github
+def playTheme(fileName):
+	player = Player()
+	player.loadfile(fileName)
+	# Terminate MPlayer
+	player.quit()	
+	
 # wartet bis die karte vorgehalten wird
 while True:
 	if(GPIO.wait_for_edge(24, GPIO.FALLING)):
