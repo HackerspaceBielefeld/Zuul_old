@@ -42,10 +42,10 @@ def checkCard(id,key):
 # setzt leds und andere ausgänge
 #TODO
 def output(pin,val,time=False):
-	pins {'green':24,'yellow':25,'red':26,'lock':27} #TODO ka ob das so richig ist
+	pins {'green':24,'yellow':25,'red':26,'lock':27,'speaker':4} #TODO ka ob das so richig ist
 	
 	GPIO.output(pins[pin],val)
-	if(!time):
+	if(time):
 		wait(time)
 		#TODO am liebsten multithread, bzw wählbar ob multithread
 		GPIO.output(pins[pin],!val)
@@ -55,10 +55,12 @@ def output(pin,val,time=False):
 # ungeprüft
 # benötigt den mplayer, liegt im github
 def playTheme(fileName):
+	output('speaker',1)
 	player = Player()
 	player.loadfile(fileName)
 	# Terminate MPlayer
 	player.quit()	
+	output('speaker',0)
 	
 # wartet bis die karte vorgehalten wird
 while True:
