@@ -128,8 +128,6 @@ class myHandler(BaseHTTPRequestHandler):
 				else:
 					# Token nicht existent
 					self.wfile.write(bytes('''<p>Keine Session gefunden</p>''',"UTF-8"))
-					#TODO
-					pass
 
 			# Content
 			if access == True:
@@ -144,6 +142,7 @@ class myHandler(BaseHTTPRequestHandler):
 				
 				if 'token' in get.keys():
 					#token search
+					#TODO
 					
 					#token create
 					#ungeprüft
@@ -161,7 +160,6 @@ class myHandler(BaseHTTPRequestHandler):
 							data = func.sql(lite,"SELECT tokenID,timecode FROM log WHERE answere = 'D' ORDER BY timecode DESC LIMIT 10")
 							for d in data:
 								self.wfile.write(bytes("[<a href='/token/add/id/"+get['id']+"/tid/"+d[0]+"/s/"+session+"'>Add to User</a>] "+ d[0] +"("+d[1]+")","UTF-8"))
-								
 					
 					#token deleter
 					if get['token'] == 'del':
@@ -184,8 +182,8 @@ class myHandler(BaseHTTPRequestHandler):
 					#TODO
 					
 				if 'log' in get.keys():
-					#todo
 					pass
+				#todo
 				
 				if 'user' in get.keys():
 					#ungeprüft
@@ -274,8 +272,9 @@ class myHandler(BaseHTTPRequestHandler):
 							else:
 								ismod = ''
 							self.wfile.write(bytes("<tr><td>"+str(d[0])+"</td><td>"+d[1]+" "+ismod+"</td><td>[<a href='/user/edit/id/"+str(d[0])+"/s/"+session+"'>Edit</a>][De/Aktivieren][<a href='/user/del/id/"+str(d[0])+"/s/"+session+"'>L&ouml;schen</a>]</td></tr>","UTF-8"))
-						#TODO
+						
 						self.wfile.write(bytes("</tbody></table>","UTF-8"))
+					#TODO
 			else:
 				# hier sieht man nur wenn man abgemeldet ist
 				# Navigation
