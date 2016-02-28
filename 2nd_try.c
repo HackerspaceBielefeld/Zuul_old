@@ -18,34 +18,44 @@ Pin 21	MISO
 Pin 23	CLK
 Pin 24	CE0
 */
+// nfc bereit machen
+int led_r = 8;
+int led_g = 10;
+int led_b = 12;
+
+
+nfc_device *pnd; // pointer für lese gerät
+nfc_target nt; //
+nfc_context *context;
 
 int doorCode = 0;
 int *tokenID = 0;
 
 static int toHex(const uint8_t *data) {
-	int n = sizeof(data);
+	int n = sizeof(data)*2;
 	int i = 0;
  
 	for (i = 0; i < n; i++) {
-		printf("%02x ", data[i]);
+		printf("%02x", data[i]);
 	}
 }
 
 static int callback(void *NotUsed, int argc, char **argv, char **azColName){
 	
 	if(argc==0) {
-		doorCode = 999;
+		doorCode = 1;
 	}
 	printf("%s = %s\n", azColName[0], argv[0] ? argv[0] : "NULL");
 	return 0;
 }
 static int callback2(void *NotUsed, int argc, char **argv, char **azColName){
-	
-	if(argc==0) {
-		doorCode = 999;
-	}
-	printf("%s = %s\n", azColName[0], argv[0] ? argv[0] : "NULL");
 	return 0;
+}
+
+static void led(int r, int g, int b) {
+	digitalWrite(ledR, r);
+	digitalWrite(ledG, g);
+	digitalWrite(ledB, b);
 }
 
 static int checkToken(char *inID) {
@@ -73,7 +83,7 @@ static int checkToken(char *inID) {
 		fprintf(stderr, "SQL ERROR:\n");
 		sqlite3_free(zErrMsg);
 	}else{
-		if(doorCode == 999){
+		if(doorCode == 1){
 			fprintf(stdout, "Token erkannt\n");
 		}else{
 			fprintf(stdout,"Token unbekannt\n");
@@ -92,42 +102,46 @@ static int checkToken(char *inID) {
 }
 
 int main(int argc, const char *argv[]){
-	
-	// nfc bereit machen
-	nfc_device *pnd; // pointer für lese gerät
-	nfc_target nt; //
+	// wiring pi
+	wiringPiSetupGpio(); // Initialize wiringPi -- using Broadcom pin numbers
 
-	nfc_context *context;
+    pinMode(ledR, OUTPUT); // Set PWM LED as PWM output
+    pinMode(ledG, OUTPUT);     // Set regular LED as output
+    pinMode(ledB, OUTPUT); 
+
+	
+	// nfc initiiere
 	nfc_init(&context);
-	// gerät initiiere
 	if (context == NULL) {
 		printf("ERROR: fehler beim dev init\n");
 		exit(EXIT_FAILURE);
 	}
 
-	// öffnet verbindung zum token
-	pnd = nfc_open(context, NULL);
- 
-	if (pnd == NULL) {
-		printf("ERROR: fehler beim öffnen.\n");
-		exit(EXIT_FAILURE);
+	while (true) {
+		// öffnet verbindung zum token
+		pnd = nfc_open(context, NULL);
+	 
+		if (pnd == NULL) {
+			printf("ERROR: fehler beim öffnen.\n");
+			exit(EXIT_FAILURE);
+		}
+
+		if (nfc_initiator_init(pnd) < 0) {
+			nfc_perror(pnd, "nfc_initiator_init");
+			exit(EXIT_FAILURE);
+		}
+
+		const nfc_modulation nmMifare = {
+				.nmt = NMT_ISO14443A,
+				.nbr = NBR_106,
+		};
+		if (nfc_initiator_select_passive_target(pnd, nmMifare, NULL, 0, &nt) > 0) {
+				toHex(nt.nti.nai.abtUid);
+				checkToken(nt.nti.nai.abtUid);
+		}
+
+		nfc_close(pnd);
 	}
-
-	if (nfc_initiator_init(pnd) < 0) {
-		nfc_perror(pnd, "nfc_initiator_init");
-		exit(EXIT_FAILURE);
-	}
-
-	const nfc_modulation nmMifare = {
-    		.nmt = NMT_ISO14443A,
-    		.nbr = NBR_106,
-  	};
-  	if (nfc_initiator_select_passive_target(pnd, nmMifare, NULL, 0, &nt) > 0) {
-    		toHex(nt.nti.nai.abtUid);
-			checkToken(nt.nti.nai.abtUid);
-  	}
-
-	nfc_close(pnd);
   	nfc_exit(context);
   	exit(EXIT_SUCCESS);
 }
