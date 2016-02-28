@@ -19,28 +19,31 @@ Pin 23	CLK
 Pin 24	CE0
 */
 
-static void print_hex(const uint8_t *pbtData, const size_t szBytes) {
-	size_t  szPos;
+int doorCode = 0;
+int *tokenID = 0;
+
+static int toHex(const uint8_t *data) {
+	int n = sizeof(data);
+	int i = 0;
  
-	for (szPos = 0; szPos < szBytes; szPos++) {
-		printf("%02x  ", pbtData[szPos]);
+	for (i = 0; i < n; i++) {
+		printf("%02x ", data[i]);
 	}
 }
 
 static int callback(void *NotUsed, int argc, char **argv, char **azColName){
-	int i;
-	for(i=0; i<argc; i++){
-		printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+	
+	if(argc==0) {
+		doorCode = 999;
 	}
-	printf("\n");
+	printf("%s = %s\n", azColName[0], argv[0] ? argv[0] : "NULL");
 	return 0;
 }
 
-static int checkToken(char *tID) {
+static int checkToken(char *inID) {
 	sqlite3 *db;
 	char *zErrMsg = 0;
 	int rc;
-	char *sql;
 
 	rc = sqlite3_open("zuul.db", &db);
 
@@ -53,23 +56,28 @@ static int checkToken(char *tID) {
 	}
 	
 	/* Create SQL statement */
-	sql = "SELECT * FROM log;";
+	char sql[1024];
+	snprintf(sql, sizeof(sql), "SELECT tKey,uName FROM token,users WHERE tID = '%s' AND token.userID = users.uID;", inID);
 
 	/* Execute SQL statement */
 	rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
 	if( rc != SQLITE_OK ){
-		fprintf(stderr, "SQL error: %s\n", zErrMsg);
+		fprintf(stderr, "SQL ERROR:\n");
 		sqlite3_free(zErrMsg);
 	}else{
-		fprintf(stdout, "Table created successfully\n");
+		if(doorCode == 999){
+			fprintf(stdout, "Token erkannt\n");			
+		}else{
+			fprintf(stdout,"Token unbekannt\n");
+			snprintf(sql, sizeof(sql), "SELECT tKey,uName FROM token,users WHERE tID = '%s' AND token.userID = users.uID;", inID);
+			rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+		}
 	}
 	sqlite3_close(db);
 	return 0;
 }
 
-int main(int argc, const char *argv[])
-{
-	checkToken("bla");
+int main(int argc, const char *argv[]){
 	
 	// nfc bereit machen
 	nfc_device *pnd; // pointer für lese gerät
@@ -101,19 +109,8 @@ int main(int argc, const char *argv[])
     		.nbr = NBR_106,
   	};
   	if (nfc_initiator_select_passive_target(pnd, nmMifare, NULL, 0, &nt) > 0) {
-    		printf("Alter TAG gefunden:");
-    		printf("ATQA:");
-    		print_hex(nt.nti.nai.abtAtqa, 2);
-			printf("NFCID-Typ: %c", (nt.nti.nai.abtUid[0] == 0x08 ? '3' : '1'));
-    		printf("NFCID: ");
-    		print_hex(nt.nti.nai.abtUid,nt.nti.nai.szUidLen);
-
-    		printf("SAK: ");
-    		print_hex(&nt.nti.nai.btSak, 1);
-    		if (nt.nti.nai.szAtsLen) {
-      			printf("          ATS (ATR): ");
-      			print_hex(nt.nti.nai.abtAts, nt.nti.nai.szAtsLen);
-    		}
+    		toHex(nt.nti.nai.abtUid);
+			checkToken(nt.nti.nai.abtUid);
   	}
 
 	nfc_close(pnd);
