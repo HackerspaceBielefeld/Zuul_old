@@ -1,0 +1,4 @@
+http://nfc-tools.org/index.php?title=Libnfc:APDU_example
+http://nfc-tools.org/index.php?title=Libnfc:example_pn53x
+http://www.libnfc.org/api/modules.html
+http://stackoverflow.com/questions/1996518/retrieving-the-output-of-subprocess-call
