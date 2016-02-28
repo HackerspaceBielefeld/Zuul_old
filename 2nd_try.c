@@ -36,6 +36,7 @@ static int toHex(const uint8_t *data) {
 	int i = 0;
  
 	for (i = 0; i < n; i++) {
+		// todo: anstatt stdout  return
 		printf("%02x", data[i]);
 	}
 }
@@ -56,6 +57,14 @@ static void led(int r, int g, int b) {
 	digitalWrite(ledR, r);
 	digitalWrite(ledG, g);
 	digitalWrite(ledB, b);
+}
+
+static void door() {
+	//todo
+}
+
+static void sound() {
+	//todo
 }
 
 static int checkToken(char *inID) {
