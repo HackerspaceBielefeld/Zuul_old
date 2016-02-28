@@ -39,6 +39,14 @@ static int callback(void *NotUsed, int argc, char **argv, char **azColName){
 	printf("%s = %s\n", azColName[0], argv[0] ? argv[0] : "NULL");
 	return 0;
 }
+static int callback2(void *NotUsed, int argc, char **argv, char **azColName){
+	
+	if(argc==0) {
+		doorCode = 999;
+	}
+	printf("%s = %s\n", azColName[0], argv[0] ? argv[0] : "NULL");
+	return 0;
+}
 
 static int checkToken(char *inID) {
 	sqlite3 *db;
@@ -66,11 +74,17 @@ static int checkToken(char *inID) {
 		sqlite3_free(zErrMsg);
 	}else{
 		if(doorCode == 999){
-			fprintf(stdout, "Token erkannt\n");			
+			fprintf(stdout, "Token erkannt\n");
 		}else{
 			fprintf(stdout,"Token unbekannt\n");
-			snprintf(sql, sizeof(sql), "SELECT tKey,uName FROM token,users WHERE tID = '%s' AND token.userID = users.uID;", inID);
-			rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+			snprintf(sql, sizeof(sql), "INSERT INTO log (tokenID,answere,timecode) VALUES ('%s','U',datetime());", inID);
+			rc = sqlite3_exec(db, sql, callback2, 0, &zErrMsg);
+			if( rc == SQLITE_OK ){
+				fprintf(stdout,"Logeintrag erfolgreich.\n");
+			}else{
+				fprintf(stderr, "SQL ERROR:\n");
+				sqlite3_free(zErrMsg);
+			}
 		}
 	}
 	sqlite3_close(db);
