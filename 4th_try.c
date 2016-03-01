@@ -28,6 +28,8 @@ const int DOOR = 18;
 
 const int RING = 22;
 
+const char *dbFile = "zuul.db";
+
 
 // nfc bereit machen
 nfc_device *pnd; // pointer für lese gerät
@@ -39,13 +41,14 @@ nfc_context *context;
 char tokenID[32];
 char tokenKey[32];
 
-static int sqlFindTagID(void *NotUsed, int argc, char **argv, char **azColName){
+int chkTokenKey(void *NotUsed, int argc, char **argv, char **azColName){
 	printf("ARGC: %u\n",argc);
 	if(argc==0) {
 		//doorCode = 1;
 	}
 	
-	printf("%s = %s\n", azColName[0], argv[0] ? argv[0] : "NULL");
+	printf("UID: %s\nKey: %s\n",argv[1], argv[0]);
+
 	return 0;
 }
 
@@ -53,7 +56,33 @@ static int sqlDoNothing(void *NotUsed, int argc, char **argv, char **azColName){
 	return 0;
 }
 
-static int checkToken() {
+int chkTokenID() {
+	sqlite3 *db;
+	char *zErrMsg = 0;
+	int rc;
+	char query[1024];
+
+	rc = sqlite3_open(dbFile, &db);
+	if(rc) {
+		printf("SQL: unbekannter Fehler.\n");
+		exit(1);
+	}else{
+		printf("SQL: DB geoeffnet.\n");
+		snprintf(query, sizeof(query), "SELECT tKey,userID FROM token WHERE tID = '%s';", tokenID);
+		printf("%s\n",query);
+		rc = sqlite3_exec(db, query, chkTokenKey, 0, &zErrMsg);
+		if( rc != SQLITE_OK ){
+			printf("SQL: %s\n", zErrMsg);
+			sqlite3_free(zErrMsg);
+		}else{
+			printf("SQL: success\n");
+		}
+	}
+	sqlite3_close(db);
+}
+
+
+static int checkID() {
 	sqlite3 *db;
 	char *zErrMsg = 0;
 	int rc;
@@ -73,7 +102,6 @@ static int checkToken() {
 	snprintf(sql, sizeof(sql), "SELECT tKey,uName FROM token,users WHERE tID = '%x' AND token.userID = users.uID;", tokenKey);
 	printf("%s\n",sql);
 	/* Execute SQL statement */
-	rc = sqlite3_exec(db, sql, sqlFindTagID, 0, &zErrMsg);
 	if( rc != SQLITE_OK ){
 		fprintf(stderr, "SQL ERROR:\n");
 		sqlite3_free(zErrMsg);
@@ -112,7 +140,7 @@ int main(int argc, const char *argv[]){
 		exit(EXIT_FAILURE);
 	}
 
-	while (true) {
+//	while (true) {
 		printf("--- Neuer Durchgang ---\n");
 		//doorCode = 0;
 		// öffnet verbindung zum token
@@ -137,14 +165,23 @@ int main(int argc, const char *argv[]){
 			printf("%s\n",tokenID);
 		}
 		
-		// TODO checken ob offen ist oder nicht um dann blau oder black zu zeigen
+		printf("--- Beginne Pruefung ---\n");
 		
-		while(nfc_initiator_target_is_present(pnd,NULL) == 0) {
-			sleep(1);
-		}
+		// TODO checken der token ok ist
+		chkTokenID();
+		
+		printf("--- Pruefung beendet ---\n");
+		
+//		while(nfc_initiator_target_is_present(pnd,NULL) == 0) {
+//			sleep(1);
+//		}
+		
+		printf("--- Durchgang beendet ---\n");
+		
+		// TODO checken ob offen ist oder nicht um dann blau oder black zu zeigen
 
 		nfc_close(pnd);
-	}
+//	}
   	nfc_exit(context);
   	exit(EXIT_SUCCESS);
 }
