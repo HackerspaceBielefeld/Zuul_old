@@ -36,14 +36,13 @@ const nfc_target *nt2; //
 nfc_context *context;
 
 // globale variablen
-int doorCode = 0;
-uint8_t tokenID = 0;
-int *tokenKey;
+char tokenID[32];
+char tokenKey[32];
 
 static int sqlFindTagID(void *NotUsed, int argc, char **argv, char **azColName){
 	printf("ARGC: %u\n",argc);
 	if(argc==0) {
-		doorCode = 1;
+		//doorCode = 1;
 	}
 	
 	printf("%s = %s\n", azColName[0], argv[0] ? argv[0] : "NULL");
@@ -79,7 +78,7 @@ static int checkToken() {
 		fprintf(stderr, "SQL ERROR:\n");
 		sqlite3_free(zErrMsg);
 	}else{
-		if(doorCode != 1){
+		if(true){//doorCode != 1){
 			fprintf(stdout,"Token unbekannt\n");
 			snprintf(sql, sizeof(sql), "INSERT INTO log (tokenID,answere,timecode) VALUES ('%s','U',datetime());", tokenKey);
 			rc = sqlite3_exec(db, sql, sqlDoNothing, 0, &zErrMsg);
@@ -104,6 +103,8 @@ int main(int argc, const char *argv[]){
 
 	pinMode(DOOR, OUTPUT);		//tür öffner
 	
+	printf("Zuul [v0.1 unstable] versuchsprogramm\n\n");
+	
 	// nfc initiiere
 	nfc_init(&context);
 	if (context == NULL) {
@@ -112,11 +113,10 @@ int main(int argc, const char *argv[]){
 	}
 
 	while (true) {
-		doorCode = 0;
+		printf("--- Neuer Durchgang ---\n");
+		//doorCode = 0;
 		// öffnet verbindung zum token
 		pnd = nfc_open(context, NULL);
-	
-		led(1,1,0); //Gelb an
 	
 		if (pnd == NULL) {
 			printf("ERROR: fehler beim öffnen.\n");
@@ -133,12 +133,15 @@ int main(int argc, const char *argv[]){
 				.nbr = NBR_106,
 		};
 		if (nfc_initiator_select_passive_target(pnd, nmMifare, NULL, 0, &nt) > 0) {
-				toTokenKey(nt.nti.nai.abtUid);
-				printf("%s\n",tokenKey);
-				checkToken();
+			sprintf(tokenID,"%02x %02x %02x %02x %02x %02x %02x %02x",nt.nti.nai.abtUid[0],nt.nti.nai.abtUid[1],nt.nti.nai.abtUid[2],nt.nti.nai.abtUid[3],nt.nti.nai.abtUid[4],nt.nti.nai.abtUid[5],nt.nti.nai.abtUid[6],nt.nti.nai.abtUid[7]);
+			printf("%s\n",tokenID);
 		}
 		
 		// TODO checken ob offen ist oder nicht um dann blau oder black zu zeigen
+		
+		while(nfc_initiator_target_is_present(pnd,NULL) == 0) {
+			sleep(1);
+		}
 
 		nfc_close(pnd);
 	}
