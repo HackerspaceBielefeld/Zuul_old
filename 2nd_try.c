@@ -7,23 +7,26 @@
 /*
 Pin 2		5VCC
 Pin 6		GND
-Pin 7	NF-AMP Power
+Pin 7		NF-AMP Power
 Pin 8		LED R
-Pin 10	LED G
-Pin 12	LED B
-Pin 14	LED GND
-Pin 18	Dooropener
-Pin 19	MOSI
-Pin 21	MISO
-Pin 23	CLK
-Pin 24	CE0
+Pin 10		LED G
+Pin 12		LED B
+Pin 14		LED GND
+Pin 18		Dooropener
+Pin 19		MOSI
+Pin 21		MISO
+Pin 23		CLK
+Pin 24		CE0
 */
+//IO pins
+const int LED_R = 8;
+const int LED_G = 10;
+const int LED_B = 12;
+
+const int DOOR = 18;
+
+
 // nfc bereit machen
-int led_r = 8;
-int led_g = 10;
-int led_b = 12;
-
-
 nfc_device *pnd; // pointer für lese gerät
 nfc_target nt; //
 nfc_context *context;
@@ -41,7 +44,7 @@ static int toHex(const uint8_t *data) {
 	}
 }
 
-static int callback(void *NotUsed, int argc, char **argv, char **azColName){
+static int sqlFindTagID(void *NotUsed, int argc, char **argv, char **azColName){
 	
 	if(argc==0) {
 		doorCode = 1;
@@ -49,18 +52,20 @@ static int callback(void *NotUsed, int argc, char **argv, char **azColName){
 	printf("%s = %s\n", azColName[0], argv[0] ? argv[0] : "NULL");
 	return 0;
 }
-static int callback2(void *NotUsed, int argc, char **argv, char **azColName){
+static int sqlDoNothing(void *NotUsed, int argc, char **argv, char **azColName){
 	return 0;
 }
 
 static void led(int r, int g, int b) {
-	digitalWrite(ledR, r);
-	digitalWrite(ledG, g);
-	digitalWrite(ledB, b);
+	digitalWrite(LED_R, r);
+	digitalWrite(LED_G, g);
+	digitalWrite(LED_B, b);
 }
 
 static void door() {
-	//todo
+	digitalWrite(DOOR, 1);
+	sleep(2000);
+	digitalWrite(DOOR, 0);
 }
 
 static void sound() {
@@ -87,7 +92,7 @@ static int checkToken(char *inID) {
 	snprintf(sql, sizeof(sql), "SELECT tKey,uName FROM token,users WHERE tID = '%s' AND token.userID = users.uID;", inID);
 
 	/* Execute SQL statement */
-	rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+	rc = sqlite3_exec(db, sql, sqlFindTagID, 0, &zErrMsg);
 	if( rc != SQLITE_OK ){
 		fprintf(stderr, "SQL ERROR:\n");
 		sqlite3_free(zErrMsg);
@@ -97,7 +102,7 @@ static int checkToken(char *inID) {
 		}else{
 			fprintf(stdout,"Token unbekannt\n");
 			snprintf(sql, sizeof(sql), "INSERT INTO log (tokenID,answere,timecode) VALUES ('%s','U',datetime());", inID);
-			rc = sqlite3_exec(db, sql, callback2, 0, &zErrMsg);
+			rc = sqlite3_exec(db, sql, sqlDoNothing, 0, &zErrMsg);
 			if( rc == SQLITE_OK ){
 				fprintf(stdout,"Logeintrag erfolgreich.\n");
 			}else{
@@ -127,6 +132,7 @@ int main(int argc, const char *argv[]){
 	}
 
 	while (true) {
+		doorcode = 0;
 		// öffnet verbindung zum token
 		pnd = nfc_open(context, NULL);
 	 
