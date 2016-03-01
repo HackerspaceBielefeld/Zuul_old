@@ -37,26 +37,34 @@ nfc_context *context;
 
 // globale variablen
 int doorCode = 0;
-int *tokenID = 0;
+uint8_t tokenID = 0;
+int *tokenKey;
 
-static int toHex(const uint8_t *data) {
-	int n = sizeof(data)*2;
+void toTokenKey(const uint8_t *data) {
+	int n = sizeof(data);
 	int i = 0;
+	int ret[32];
  
 	for (i = 0; i < n; i++) {
 		// todo: anstatt stdout  return
-		printf("%02x", data[i]);
+		ret[i] = data[i];
+		printf("%02x\n",ret);
 	}
+	//memmove (ret, ret+1, strlen (ret+1) + 1);
+	tokenKey = ret;
+	//return ret;
 }
 
 static int sqlFindTagID(void *NotUsed, int argc, char **argv, char **azColName){
-	
+	printf("ARGC: %u\n",argc);
 	if(argc==0) {
 		doorCode = 1;
 	}
+	
 	printf("%s = %s\n", azColName[0], argv[0] ? argv[0] : "NULL");
 	return 0;
 }
+
 static int sqlDoNothing(void *NotUsed, int argc, char **argv, char **azColName){
 	return 0;
 }
@@ -77,7 +85,7 @@ static void sound() {
 	//todo
 }
 
-static int checkToken(char *inID) {
+static int checkToken() {
 	sqlite3 *db;
 	char *zErrMsg = 0;
 	int rc;
@@ -94,19 +102,17 @@ static int checkToken(char *inID) {
 	
 	/* Create SQL statement */
 	char sql[1024];
-	snprintf(sql, sizeof(sql), "SELECT tKey,uName FROM token,users WHERE tID = '%s' AND token.userID = users.uID;", inID);
-
+	snprintf(sql, sizeof(sql), "SELECT tKey,uName FROM token,users WHERE tID = '%x' AND token.userID = users.uID;", tokenKey);
+	printf("%s\n",sql);
 	/* Execute SQL statement */
 	rc = sqlite3_exec(db, sql, sqlFindTagID, 0, &zErrMsg);
 	if( rc != SQLITE_OK ){
 		fprintf(stderr, "SQL ERROR:\n");
 		sqlite3_free(zErrMsg);
 	}else{
-		if(doorCode == 1){
-			fprintf(stdout, "Token erkannt\n");
-		}else{
+		if(doorCode != 1){
 			fprintf(stdout,"Token unbekannt\n");
-			snprintf(sql, sizeof(sql), "INSERT INTO log (tokenID,answere,timecode) VALUES ('%s','U',datetime());", inID);
+			snprintf(sql, sizeof(sql), "INSERT INTO log (tokenID,answere,timecode) VALUES ('%s','U',datetime());", tokenKey);
 			rc = sqlite3_exec(db, sql, sqlDoNothing, 0, &zErrMsg);
 			if( rc == SQLITE_OK ){
 				fprintf(stdout,"Logeintrag erfolgreich.\n");
@@ -114,22 +120,20 @@ static int checkToken(char *inID) {
 				fprintf(stderr, "SQL ERROR:\n");
 				sqlite3_free(zErrMsg);
 			}
+		}else{
+			printf("Token bekannt\n");
 		}
 	}
 	sqlite3_close(db);
 	return 0;
-}
+}//042c7a123b348000
 
 int main(int argc, const char *argv[]){
-	// wiring pi
-	//wiringPiSetupGpio(); // Initialize wiringPi -- using Broadcom pin numbers
-
     pinMode(LED_R, OUTPUT); 	// Set PWM LED as PWM output
     pinMode(LED_G, OUTPUT);     // Set regular LED as output
     pinMode(LED_B, OUTPUT); 	
 
 	pinMode(DOOR, OUTPUT);		//tür öffner
-	pinMode(RING, INPUT);			//Klingel
 	
 	// nfc initiiere
 	nfc_init(&context);
@@ -142,7 +146,9 @@ int main(int argc, const char *argv[]){
 		doorCode = 0;
 		// öffnet verbindung zum token
 		pnd = nfc_open(context, NULL);
-	 
+	
+		led(1,1,0); //Gelb an
+	
 		if (pnd == NULL) {
 			printf("ERROR: fehler beim öffnen.\n");
 			exit(EXIT_FAILURE);
@@ -158,9 +164,12 @@ int main(int argc, const char *argv[]){
 				.nbr = NBR_106,
 		};
 		if (nfc_initiator_select_passive_target(pnd, nmMifare, NULL, 0, &nt) > 0) {
-				toHex(nt.nti.nai.abtUid);
-				checkToken(nt.nti.nai.abtUid);
+				toTokenKey(nt.nti.nai.abtUid);
+				printf("%s\n",tokenKey);
+				checkToken();
 		}
+		
+		// TODO checken ob offen ist oder nicht um dann blau oder black zu zeigen
 
 		nfc_close(pnd);
 	}
