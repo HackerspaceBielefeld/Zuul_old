@@ -7,11 +7,11 @@
 /*
 Pin 2		5VCC
 Pin 6		GND
+Pin 7	NF-AMP Power
 Pin 8		LED R
 Pin 10	LED G
 Pin 12	LED B
 Pin 14	LED GND
-Pin 15	NF-AMP Power
 Pin 18	Dooropener
 Pin 19	MOSI
 Pin 21	MISO
@@ -24,7 +24,7 @@ int led_g = 10;
 int led_b = 12;
 
 
-nfc_device *pnd; // pointer für lese gerät
+nfc_device *pnd; // pointer fÃ¼r lese gerÃ¤t
 nfc_target nt; //
 nfc_context *context;
 
@@ -127,11 +127,11 @@ int main(int argc, const char *argv[]){
 	}
 
 	while (true) {
-		// öffnet verbindung zum token
+		// Ã¶ffnet verbindung zum token
 		pnd = nfc_open(context, NULL);
 	 
 		if (pnd == NULL) {
-			printf("ERROR: fehler beim öffnen.\n");
+			printf("ERROR: fehler beim Ã¶ffnen.\n");
 			exit(EXIT_FAILURE);
 		}
 
