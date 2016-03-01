@@ -1,5 +1,2 @@
-*.BK5
-*.BK1
-*.BK2
-*.BK4
-*.BK5
+*.BK*
+*/BackupFiles/*
