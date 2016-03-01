@@ -19,9 +19,9 @@ Pin 23		CLK
 Pin 24		CE0
 */
 //IO pins
-const int LED_R = 8;
-const int LED_G = 10;
-const int LED_B = 12;
+const int ledR = 8;
+const int ledG = 10;
+const int ledB = 12;
 
 const int DOOR = 18;
 
@@ -56,17 +56,6 @@ static int sqlDoNothing(void *NotUsed, int argc, char **argv, char **azColName){
 	return 0;
 }
 
-static void led(int r, int g, int b) {
-	digitalWrite(LED_R, r);
-	digitalWrite(LED_G, g);
-	digitalWrite(LED_B, b);
-}
-
-static void door() {
-	digitalWrite(DOOR, 1);
-	sleep(2000);
-	digitalWrite(DOOR, 0);
-}
 
 static void sound() {
 	//todo
@@ -117,7 +106,7 @@ static int checkToken(char *inID) {
 
 int main(int argc, const char *argv[]){
 	// wiring pi
-	wiringPiSetupGpio(); // Initialize wiringPi -- using Broadcom pin numbers
+	//wiringPiSetupGpio(); // Initialize wiringPi -- using Broadcom pin numbers
 
     pinMode(ledR, OUTPUT); // Set PWM LED as PWM output
     pinMode(ledG, OUTPUT);     // Set regular LED as output
@@ -132,7 +121,7 @@ int main(int argc, const char *argv[]){
 	}
 
 	while (true) {
-		doorcode = 0;
+		//doorcode = 0;
 		// öffnet verbindung zum token
 		pnd = nfc_open(context, NULL);
 	 
