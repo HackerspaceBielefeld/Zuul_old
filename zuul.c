@@ -23,6 +23,7 @@ const nfc_modulation nmMifare = {
 // globale variablen
 char tokenID[32];
 char tokenKey[32];
+int status = 0;
 
 // nfc bereit machen
 nfc_device *pnd; 		// pointer für lese gerät
@@ -45,6 +46,37 @@ static void door() {
 	digitalWrite(DOOR, 0);
 }
 
+//dummy func für nach dem zugriff auf die db
+//ungeprüft
+static int sqlDoNothing(void *NotUsed, int argc, char **argv, char **azColName){
+	return 0;
+}
+
+//schreibt einen Log eintrag
+//ungeprüft
+int sqlDoLog(char *answ,char *info) {
+	char *zErrMsg = 0;
+	char query[1024];
+
+	rc = sqlite3_open(dbFile, &db);
+	if(rc) {
+		printf("SQL: unbekannter Fehler.\n");
+		exit(1);
+	}else{
+		printf("SQL: DB geoeffnet.\n");
+		snprintf(query, sizeof(query), "INSERT INTO log (tokenID,answere,timeCode,addInfo) VALUES ('%s','%s',datetime(),'%s');", tokenID,answ,info);
+		printf("%s\n",query);
+		rc = sqlite3_exec(db, query, sqlDoNothing, 0, &zErrMsg);
+		if( rc != SQLITE_OK ){
+			printf("SQL: %s\n", zErrMsg);
+			sqlite3_free(zErrMsg);
+		}else{
+			printf("SQL: Log: success\n");
+		}
+	}
+	sqlite3_close(db);
+}
+
 //überprüfe den token
 //TODO chier gehts weiter
 int chkTokenKey(void *NotUsed, int argc, char **argv, char **azColName){
@@ -58,15 +90,31 @@ int chkTokenKey(void *NotUsed, int argc, char **argv, char **azColName){
 	return 0;
 }
 
+int chkTokenID_res(void *NotUsed, int argc, char **argv, char **azColName){
+	printf("ARGC: %u\n",argc);
+	if(argc == 0) {
+		//keine übereinstimmung
+		strcpy(tokenKey,"");
+		status = -1;
+		return 1;
+	}else{
+		//übereinstimmung gefunden
+		strcpy(tokenKey,argv[0]);
+		status = 1;
+		return 0;
+	}
+	
+	//printf("UID: %s\nKey: %s\n",argv[1], argv[0]);
+
+}
+
 //suche token in DB
 //ungeprüft
 int chkTokenID() {
-	sqlite3 *db;
 	char *zErrMsg = 0;
-	int rc;
 	char query[1024];
-
 	rc = sqlite3_open(dbFile, &db);
+	
 	if(rc) {
 		printf("SQL: unbekannter Fehler.\n");
 		exit(1);
@@ -74,7 +122,7 @@ int chkTokenID() {
 		printf("SQL: DB geoeffnet.\n");
 		snprintf(query, sizeof(query), "SELECT tKey,userID FROM token WHERE tID = '%s';", tokenID);
 		printf("%s\n",query);
-		rc = sqlite3_exec(db, query, chkTokenKey, 0, &zErrMsg);
+		rc = sqlite3_exec(db, query, chkTokenID_res, 0, &zErrMsg);
 		if( rc != SQLITE_OK ){
 			printf("SQL: %s\n", zErrMsg);
 			sqlite3_free(zErrMsg);
@@ -83,13 +131,6 @@ int chkTokenID() {
 		}
 	}
 	sqlite3_close(db);
-}
-
-
-//dummy func für nach dem zugriff auf die db
-//ungeprüft
-static int sqlDoNothing(void *NotUsed, int argc, char **argv, char **azColName){
-	return 0;
 }
 
 
@@ -119,8 +160,14 @@ int main(int argc, const char *argv[]){
 		
 		printf("--- Beginne Pruefung ---\n");
 		
-		// TODO checken der token ok ist
 		chkTokenID();
+		if(status == 1) {
+			printf("--- Suchen Token Key ---\n");
+			sqlDoLog("G","Test");
+			//chkTokenKey();
+		}else{
+			sqlDoLog("D","Test");
+		}
 		
 		printf("--- Pruefung beendet ---\n");
 		

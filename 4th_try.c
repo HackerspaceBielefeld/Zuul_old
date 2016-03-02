@@ -40,26 +40,16 @@ nfc_context *context;
 // globale variablen
 char tokenID[32];
 char tokenKey[32];
-
-int chkTokenKey(void *NotUsed, int argc, char **argv, char **azColName){
-	printf("ARGC: %u\n",argc);
-	if(argc==0) {
-		//doorCode = 1;
-	}
-	
-	printf("UID: %s\nKey: %s\n",argv[1], argv[0]);
-
-	return 0;
-}
+int status = 0;
+sqlite3 *db;
+int rc;
 
 static int sqlDoNothing(void *NotUsed, int argc, char **argv, char **azColName){
 	return 0;
 }
 
-int chkTokenID() {
-	sqlite3 *db;
+int sqlDoLog(char *answ,char *info) {
 	char *zErrMsg = 0;
-	int rc;
 	char query[1024];
 
 	rc = sqlite3_open(dbFile, &db);
@@ -68,9 +58,50 @@ int chkTokenID() {
 		exit(1);
 	}else{
 		printf("SQL: DB geoeffnet.\n");
+		snprintf(query, sizeof(query), "INSERT INTO log (tokenID,answere,timeCode,addInfo) VALUES ('%s','%s',datetime(),'%s');", tokenID,answ,info);
+		printf("%s\n",query);
+		rc = sqlite3_exec(db, query, sqlDoNothing, 0, &zErrMsg);
+		if( rc != SQLITE_OK ){
+			printf("SQL: %s\n", zErrMsg);
+			sqlite3_free(zErrMsg);
+		}else{
+			printf("SQL: Log: success\n");
+		}
+	}
+	sqlite3_close(db);
+}
+
+int chkTokenID_res(void *NotUsed, int argc, char **argv, char **azColName){
+	printf("ARGC: %u\n",argc);
+	if(argc == 0) {
+		//keine übereinstimmung
+		strcpy(tokenKey,"");
+		status = -1;
+		return 1;
+	}else{
+		//übereinstimmung gefunden
+		strcpy(tokenKey,argv[0]);
+		status = 1;
+		return 0;
+	}
+	
+	//printf("UID: %s\nKey: %s\n",argv[1], argv[0]);
+
+}
+
+int chkTokenID() {
+	char *zErrMsg = 0;
+	char query[1024];
+	rc = sqlite3_open(dbFile, &db);
+	
+	if(rc) {
+		printf("SQL: unbekannter Fehler.\n");
+		exit(1);
+	}else{
+		printf("SQL: DB geoeffnet.\n");
 		snprintf(query, sizeof(query), "SELECT tKey,userID FROM token WHERE tID = '%s';", tokenID);
 		printf("%s\n",query);
-		rc = sqlite3_exec(db, query, chkTokenKey, 0, &zErrMsg);
+		rc = sqlite3_exec(db, query, chkTokenID_res, 0, &zErrMsg);
 		if( rc != SQLITE_OK ){
 			printf("SQL: %s\n", zErrMsg);
 			sqlite3_free(zErrMsg);
@@ -82,47 +113,47 @@ int chkTokenID() {
 }
 
 
-static int checkID() {
-	sqlite3 *db;
-	char *zErrMsg = 0;
-	int rc;
+// static int checkID() {
+	// sqlite3 *db;
+	// char *zErrMsg = 0;
+	// int rc;
 
-	rc = sqlite3_open("zuul.db", &db);
+	// rc = sqlite3_open("zuul.db", &db);
 
-	if( rc ){
-		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-		exit(0);
-	}else{
-		fprintf(stderr, "Opened database successfully\n");
+	// if( rc ){
+		// fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+		// exit(0);
+	// }else{
+		// fprintf(stderr, "Opened database successfully\n");
 		
-	}
+	// }
 	
-	/* Create SQL statement */
-	char sql[1024];
-	snprintf(sql, sizeof(sql), "SELECT tKey,uName FROM token,users WHERE tID = '%x' AND token.userID = users.uID;", tokenKey);
-	printf("%s\n",sql);
-	/* Execute SQL statement */
-	if( rc != SQLITE_OK ){
-		fprintf(stderr, "SQL ERROR:\n");
-		sqlite3_free(zErrMsg);
-	}else{
-		if(true){//doorCode != 1){
-			fprintf(stdout,"Token unbekannt\n");
-			snprintf(sql, sizeof(sql), "INSERT INTO log (tokenID,answere,timecode) VALUES ('%s','U',datetime());", tokenKey);
-			rc = sqlite3_exec(db, sql, sqlDoNothing, 0, &zErrMsg);
-			if( rc == SQLITE_OK ){
-				fprintf(stdout,"Logeintrag erfolgreich.\n");
-			}else{
-				fprintf(stderr, "SQL ERROR:\n");
-				sqlite3_free(zErrMsg);
-			}
-		}else{
-			printf("Token bekannt\n");
-		}
-	}
-	sqlite3_close(db);
-	return 0;
-}//042c7a123b348000
+	// /* Create SQL statement */
+	// char sql[1024];
+	// snprintf(sql, sizeof(sql), "SELECT tKey,uName FROM token,users WHERE tID = '%x' AND token.userID = users.uID;", tokenKey);
+	// printf("%s\n",sql);
+	// /* Execute SQL statement */
+	// if( rc != SQLITE_OK ){
+		// fprintf(stderr, "SQL ERROR:\n");
+		// sqlite3_free(zErrMsg);
+	// }else{
+		// if(true){//doorCode != 1){
+			// fprintf(stdout,"Token unbekannt\n");
+			// snprintf(sql, sizeof(sql), "INSERT INTO log (tokenID,answere,timecode) VALUES ('%s','U',datetime());", tokenKey);
+			// rc = sqlite3_exec(db, sql, sqlDoNothing, 0, &zErrMsg);
+			// if( rc == SQLITE_OK ){
+				// fprintf(stdout,"Logeintrag erfolgreich.\n");
+			// }else{
+				// fprintf(stderr, "SQL ERROR:\n");
+				// sqlite3_free(zErrMsg);
+			// }
+		// }else{
+			// printf("Token bekannt\n");
+		// }
+	// }
+	// sqlite3_close(db);
+	// return 0;
+// }//042c7a123b348000
 
 int main(int argc, const char *argv[]){
     pinMode(LED_R, OUTPUT); 	// Set PWM LED as PWM output
@@ -131,7 +162,7 @@ int main(int argc, const char *argv[]){
 
 	pinMode(DOOR, OUTPUT);		//tür öffner
 	
-	printf("Zuul [v0.1 unstable] versuchsprogramm\n\n");
+	printf("Zuul [v0.2 unstable] versuchsprogramm\n\n");
 	
 	// nfc initiiere
 	nfc_init(&context);
@@ -165,10 +196,17 @@ int main(int argc, const char *argv[]){
 			printf("%s\n",tokenID);
 		}
 		
-		printf("--- Beginne Pruefung ---\n");
+		printf("--- Suche Token ID ---\n");
 		
 		// TODO checken der token ok ist
 		chkTokenID();
+		if(status == 1) {
+			printf("--- Suchen Token Key ---\n");
+			sqlDoLog("G","Test");
+			//chkTokenKey();
+		}else{
+			sqlDoLog("D","Test");
+		}
 		
 		printf("--- Pruefung beendet ---\n");
 		
