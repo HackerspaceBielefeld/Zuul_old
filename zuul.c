@@ -24,6 +24,8 @@ const nfc_modulation nmMifare = {
 char tokenID[32];
 char tokenKey[32];
 int status = 0;
+sqlite3 *db;
+int rc;
 
 // nfc bereit machen
 nfc_device *pnd; 		// pointer für lese gerät
@@ -36,6 +38,17 @@ static void led(int r, int g, int b) {
 	digitalWrite(LED_R, r);
 	digitalWrite(LED_G, g);
 	digitalWrite(LED_B, b);
+}
+
+// blinkt <count> mal mit der led
+static void blink(int r,int g,int b, int count) {
+	int i = 0;
+	for(i=0;i<count;i++) {
+		led(r,g,b);
+		sleep(0.5);
+		led(0,0,0);
+		sleep(0.5);
+	}
 }
 
 //tür öffnen
@@ -167,6 +180,7 @@ int main(int argc, const char *argv[]){
 			//chkTokenKey();
 		}else{
 			sqlDoLog("D","Test");
+			blink(1,0,0,2);
 		}
 		
 		printf("--- Pruefung beendet ---\n");
