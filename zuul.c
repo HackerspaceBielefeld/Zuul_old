@@ -59,8 +59,10 @@ static void blink(int r,int g,int b, int count) {
 //tür öffnen
 //ungeprüft
 static void door() {
+	printf("Tuer oeffnen\n");
 	digitalWrite(DOOR, 1);
 	sleep(3);
+	printf("Tuer beenden\n");
 	digitalWrite(DOOR, 0);
 }
 
@@ -185,7 +187,7 @@ int main(int argc, const char *argv[]){
 		
 		sprintf(tokenID,"%02x %02x %02x %02x %02x %02x %02x %02x",nt.nti.nai.abtUid[0],nt.nti.nai.abtUid[1],nt.nti.nai.abtUid[2],nt.nti.nai.abtUid[3],nt.nti.nai.abtUid[4],nt.nti.nai.abtUid[5],nt.nti.nai.abtUid[6],nt.nti.nai.abtUid[7]);
 			printf("%s\n",tokenID);
-		//led(1,1,0); //Gelb an
+		led(1,1,0); //Gelb
 		
 		printf("--- Beginne Pruefung ---\n");
 		
@@ -193,9 +195,9 @@ int main(int argc, const char *argv[]){
 		if(status == 1) {
 			printf("--- Suchen Token Key ---\n");
 			sqlDoLog("G","Test");
-			led(0,1,0);
+			led(0,1,0); //grün
 			door();
-			led(0,0,0);
+			led(0,0,0); //aus
 			//chkTokenKey();
 		}else{
 			sqlDoLog("D","Test");
