@@ -41,13 +41,16 @@ static void led(int r, int g, int b) {
 }
 
 // blinkt <count> mal mit der led
+//ungetested
 static void blink(int r,int g,int b, int count) {
 	int i = 0;
 	for(i=0;i<count;i++) {
 		led(r,g,b);
 		sleep(0.5);
+		printf("Blink an\n");
 		led(0,0,0);
 		sleep(0.5);
+		printf("Blink aus\n");
 	}
 }
 
@@ -159,14 +162,25 @@ int main(int argc, const char *argv[]){
 	
 	// nfc initiiere
 	nfc_init(&context); //lese gerät initiieren
+	if (context == NULL) {
+		printf("Unable to init libnfc (malloc)\n");
+		exit(EXIT_FAILURE);
+	}
 	
-	while(true) {
+	// while(true) {
+		printf("--- Neuer Durchgang ---\n");
 		// auf token warten
 		pnd = nfc_open(context, NULL);
+		printf("-- nfc_open --\n");
+		if (pnd == NULL) {
+			printf("ERROR:%s\n", "Unable to open NFC device.");
+			exit(EXIT_FAILURE);
+		}
 		led(1,1,0); //Gelb an
-		
 		// token lesen
-		if (nfc_initiator_select_passive_target(pnd, nmMifare, NULL, 0, &nt) > 0) {
+		//printf("Tokens gefunden: %u\n",nfc_initiator_select_passive_target(pnd, nmMifare, NULL, 0, &nt));
+
+		if (nfc_initiator_select_passive_target(pnd, nmMifare, NULL, 0, &nt) == 1) {
 			sprintf(tokenID,"%02x %02x %02x %02x %02x %02x %02x %02x",nt.nti.nai.abtUid[0],nt.nti.nai.abtUid[1],nt.nti.nai.abtUid[2],nt.nti.nai.abtUid[3],nt.nti.nai.abtUid[4],nt.nti.nai.abtUid[5],nt.nti.nai.abtUid[6],nt.nti.nai.abtUid[7]);
 			printf("%s\n",tokenID);
 		}
@@ -180,7 +194,7 @@ int main(int argc, const char *argv[]){
 			//chkTokenKey();
 		}else{
 			sqlDoLog("D","Test");
-			blink(1,0,0,2);
+			// blink(1,0,0,2);
 		}
 		
 		printf("--- Pruefung beendet ---\n");
@@ -194,7 +208,11 @@ int main(int argc, const char *argv[]){
 		// TODO checken ob offen ist oder nicht um dann blau oder black zu zeigen
 
 		nfc_close(pnd);
-	}
+		
+		//strcpy(tokenID,"");
+		//strcpy(tokenKey,"");
+		status = 0;
+	// }
   	nfc_exit(context);
   	exit(EXIT_SUCCESS);
 }	
