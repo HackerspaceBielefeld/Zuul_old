@@ -74,7 +74,7 @@ static int sqlDoNothing(void *NotUsed, int argc, char **argv, char **azColName){
 
 //schreibt einen Log eintrag
 //ungeprüft
-int sqlDoLog(char *answ,char *info) {
+void sqlDoLog(char *answ,char *info) {
 	char *zErrMsg = 0;
 	char query[1024];
 
@@ -130,7 +130,7 @@ int chkTokenID_res(void *NotUsed, int argc, char **argv, char **azColName){
 
 //suche token in DB
 //ungeprüft
-int chkTokenID() {
+void chkTokenID() {
 	char *zErrMsg = 0;
 	char query[1024];
 	rc = sqlite3_open(dbFile, &db);
