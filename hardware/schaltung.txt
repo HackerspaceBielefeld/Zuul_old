@@ -1,0 +1,11 @@
+T1; Drill; Dia=0.8mm; Depth=0.3mm; Dive=1.16mm/sec; Work=1.16mm/sec
+T2; Drill; Dia=0.7mm; Depth=0.3mm; Dive=1.08mm/sec; Work=1.08mm/sec
+T3; Drill; Dia=1.0mm; Depth=0.3mm; Dive=1.32mm/sec; Work=1.32mm/sec
+T4; Drill; Dia=1.2mm; Depth=0.3mm; Dive=1.48mm/sec; Work=1.48mm/sec
+T5; Drill; Dia=1.4mm; Depth=0.3mm; Dive=1.64mm/sec; Work=1.64mm/sec
+T6; Drill; Dia=1.3mm; Depth=0.3mm; Dive=1.56mm/sec; Work=1.56mm/sec
+T7; Drill; Dia=0.6mm; Depth=0.3mm; Dive=1.0mm/sec; Work=1.0mm/sec
+T8; Drill; Dia=3.1mm; Depth=0.3mm; Dive=3.0mm/sec; Work=3.0mm/sec
+T9; Isolate; Dia=0.3mm; Depth=0.3mm; Dive=0.3mm/sec; Work=5.0mm/sec
+T10; Rubout; Dia=2.0mm; Depth=0.3mm; Dive=2.0mm/sec; Work=3.0mm/sec
+T11; Flip; Dia=0.0mm; Depth=0.0mm; Dive=0.0mm/sec; Work=0.0mm/sec
