@@ -1,5 +1,5 @@
 clean:
-     rm zuul
+	rm zuul
 
 all: 
-   gcc -o zuul zuul.c -lnfc -lsqlite3 -lwiringPi -o3
+	gcc -o zuul zuul.c -lnfc -lsqlite3 -lwiringPi -o3
