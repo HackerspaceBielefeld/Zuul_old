@@ -1,22 +1,3 @@
-/*-
- * Copyright (C) 2010, Romain Tartiere.
- * 
- * This program is free software: you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as published by the
- * Free Software Foundation, either version 3 of the License, or (at your
- * option) any later version.
- * 
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- * 
- * $Id$
- */
-
 #include "config.h"
 
 #include <err.h>
@@ -30,9 +11,11 @@
 #include <freefare.h>
 
 // müsste der key sein fürs file system
-uint8_t key_data_picc[8] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+uint8_t key_data_picc[8] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };	
+// key für Dir
+	// Str Zuul-HSB
+uint8_t key_for_zuul[8] = { 0x5a, 0x75, 0x75, 0x6c, 0x2d, 0x48, 0x53, 0x42 };
 
-// TODO: Allow to pass another ATS as option
 // Default Mifare DESFire ATS
 uint8_t new_ats[] = { 0x06, 0x75, 0x77, 0x81, 0x02, 0x80 };
 
@@ -42,63 +25,27 @@ struct {
 	.interactive = true
 };
 
-static void
-usage(char *progname)
+int main(int argc, char *argv[])
 {
-	fprintf (stderr, "usage: %s [-y] [-K 11223344AABBCCDD]\n", progname);
-	fprintf (stderr, "\nOptions:\n");
-	fprintf (stderr, "  -y     Do not ask for confirmation (dangerous)\n");
-	fprintf (stderr, "  -K     Provide another PICC key than the default one\n");
-}
-
-int
-main(int argc, char *argv[])
-{
-	int ch;
+	int ch; //???
 	int error = EXIT_SUCCESS;
-	nfc_device *device = NULL;
-	MifareTag *tags = NULL;
+	nfc_device *device = NULL; // geöffneter Leser
+	MifareTag *tags = NULL; //gefundene Token
 
-    while ((ch = getopt (argc, argv, "hyK:")) != -1) {
-	switch (ch) {
-		case 'h':
-			usage(argv[0]);
-			exit (EXIT_SUCCESS);
-			break;
-		case 'y':
-			configure_options.interactive = false;
-			break;
-		case 'K':
-			if (strlen(optarg) != 16) {
-			usage(argv[0]);
-			exit (EXIT_FAILURE);
-			}
-			uint64_t n = strtoull(optarg, NULL, 16);
-			int i;
-			for (i=7; i>=0; i--) {
-			key_data_picc[i] = (uint8_t) n;
-			n >>= 8;
-			}
-			break;
-		default:
-			usage(argv[0]);
-			exit (EXIT_FAILURE);
-		}
-	}
-
-	// Remaining args, if any, are in argv[optind .. (argc-1)]
-
-	nfc_connstring devices[8];
+	nfc_connstring devices[8]; // gefundene Leser
 	size_t device_count;
 
 	nfc_context *context;
 	nfc_init (&context);
 
+	// zählt gefundene Tags
 	device_count = nfc_list_devices (context, devices, 8);
 	if (device_count <= 0)
 		errx (EXIT_FAILURE, "No NFC device found.");
+		// fehler wenn kein dev gfunden
 
 	for (size_t d = 0; (!error) && (d < device_count); d++) {
+		// versuche tag zu öffnen
 		device = nfc_open (context, devices[d]);
 		if (!device) {
 			warnx ("nfc_open() failed.");
@@ -106,6 +53,7 @@ main(int argc, char *argv[])
 			continue;
 		}
 
+		// listet gefundene tags auf
 		tags = freefare_get_tags (device);
 		if (!tags) {
 			nfc_close (device);
@@ -113,13 +61,16 @@ main(int argc, char *argv[])
 		}
 
 		for (int i = 0; (!error) && tags[i]; i++) {
+			// wenn tag kein Desfire,dann überspringen
 			if (DESFIRE != freefare_get_tag_type (tags[i]))
 				continue;
 
+			//holt uid von token
 			char *tag_uid = freefare_get_tag_uid (tags[i]);
-			char buffer[BUFSIZ];
+			char buffer[BUFSIZ]; // ??? nur für konsolen kram
 			int res;
 
+			// verbindet token
 			res = mifare_desfire_connect (tags[i]);
 			if (res < 0) {
 				warnx ("Can't connect to Mifare DESFire target.");
@@ -135,6 +86,8 @@ main(int argc, char *argv[])
 				error = 1;
 				break;
 			}
+			
+			// bei altem tag überspringen
 			if (info.software.version_major < 1) {
 				warnx ("Found old DESFire, skipping");
 				continue;
@@ -151,15 +104,18 @@ main(int argc, char *argv[])
 			}
 
 			if (do_it) {
+				// erzeugt neuen key
 				MifareDESFireKey key_picc = mifare_desfire_des_key_new_with_version (key_data_picc);
+				// authentifiziert sich mit key
 				res = mifare_desfire_authenticate (tags[i], 0, key_picc);
 				if (res < 0) {
 					freefare_perror (tags[i], "mifare_desfire_authenticate");
 					error = EXIT_FAILURE;
 					break;
 				}
+				//gibt speicher frei oder so ???
 				mifare_desfire_key_free (key_picc);
-
+				//setzt standard ATS (zur initialisierung???)
 				res = mifare_desfire_set_ats (tags[i], new_ats);
 				if (res < 0) {
 					freefare_perror (tags[i], "mifare_desfire_set_ats");
@@ -167,8 +123,9 @@ main(int argc, char *argv[])
 					break;
 				}
 			}
-
+			// trennt verbindung
 			mifare_desfire_disconnect (tags[i]);
+			//speicher freigeben
 			free (tag_uid);
 		}
 
