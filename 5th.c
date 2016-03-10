@@ -178,3 +178,5 @@ main(int argc, char *argv[])
     nfc_exit (context);
     exit (error);
 } /* main() */
+
+//https://github.com/raidolepp/libfreefare/tree/master/libfreefare/examples
