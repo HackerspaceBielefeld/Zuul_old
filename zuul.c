@@ -3,6 +3,7 @@
 #include <wiringPi.h>
 #include <string.h>
 #include <sqlite3.h>
+#include <unistd.h>
 
 // konstanten GPIO
 const int LED_R = 8;	//rot
@@ -24,6 +25,8 @@ const nfc_modulation nmMifare = {
 char tokenID[32];
 char tokenKey[32];
 int status = 0;
+sqlite3 *db;
+int rc;
 
 // nfc bereit machen
 nfc_device *pnd; 		// pointer für lese gerät
@@ -36,13 +39,30 @@ static void led(int r, int g, int b) {
 	digitalWrite(LED_R, r);
 	digitalWrite(LED_G, g);
 	digitalWrite(LED_B, b);
+	printf("# %u %u %u\n", r,g,b);
+}
+
+// blinkt <count> mal mit der led
+//ungetested
+static void blink(int r,int g,int b, int count) {
+	int i = 0;
+	for(i=0;i<count;i++) {
+		led(r,g,b);
+		printf("Blink an\n");
+		sleep(1);
+		led(0,0,0);
+		printf("Blink aus\n");
+		sleep(1);
+	}
 }
 
 //tür öffnen
 //ungeprüft
 static void door() {
+	printf("Tuer oeffnen\n");
 	digitalWrite(DOOR, 1);
-	sleep(2000);
+	sleep(3);
+	printf("Tuer beenden\n");
 	digitalWrite(DOOR, 0);
 }
 
@@ -135,7 +155,7 @@ int chkTokenID() {
 
 
 int main(int argc, const char *argv[]){
-	printf("Zuul [v0.2 dev] Hauptprogramm\n\n");
+	printf("Zuul [v0.3 dev] Hauptprogramm\n\n");
 	
 	//GPIO als ausgänge legen
     pinMode(LED_R, OUTPUT);
@@ -144,19 +164,30 @@ int main(int argc, const char *argv[]){
 
 	pinMode(DOOR, OUTPUT);
 	
-	// nfc initiiere
-	nfc_init(&context); //lese gerät initiieren
-	
 	while(true) {
+		// nfc initiiere
+		nfc_init(&context); //lese gerät initiieren
+		if (context == NULL) {
+			printf("Unable to init libnfc (malloc)\n");
+			exit(EXIT_FAILURE);
+		}
+		
+		printf("--- Neuer Durchgang ---\n");
 		// auf token warten
 		pnd = nfc_open(context, NULL);
-		led(1,1,0); //Gelb an
-		
-		// token lesen
-		if (nfc_initiator_select_passive_target(pnd, nmMifare, NULL, 0, &nt) > 0) {
-			sprintf(tokenID,"%02x %02x %02x %02x %02x %02x %02x %02x",nt.nti.nai.abtUid[0],nt.nti.nai.abtUid[1],nt.nti.nai.abtUid[2],nt.nti.nai.abtUid[3],nt.nti.nai.abtUid[4],nt.nti.nai.abtUid[5],nt.nti.nai.abtUid[6],nt.nti.nai.abtUid[7]);
-			printf("%s\n",tokenID);
+		printf("-- nfc_open --\n");
+		if (pnd == NULL) {
+			printf("ERROR:%s\n", "Unable to open NFC device.");
+			exit(EXIT_FAILURE);
 		}
+		
+		while(nfc_initiator_select_passive_target(pnd, nmMifare, NULL, 0, &nt) != 1) {
+			sleep(1);
+		}
+		
+		sprintf(tokenID,"%02x %02x %02x %02x %02x %02x %02x %02x",nt.nti.nai.abtUid[0],nt.nti.nai.abtUid[1],nt.nti.nai.abtUid[2],nt.nti.nai.abtUid[3],nt.nti.nai.abtUid[4],nt.nti.nai.abtUid[5],nt.nti.nai.abtUid[6],nt.nti.nai.abtUid[7]);
+			printf("%s\n",tokenID);
+		led(1,1,0); //Gelb
 		
 		printf("--- Beginne Pruefung ---\n");
 		
@@ -164,15 +195,13 @@ int main(int argc, const char *argv[]){
 		if(status == 1) {
 			printf("--- Suchen Token Key ---\n");
 			sqlDoLog("G","Test");
+			led(0,1,0); //grün
+			door();
+			led(0,0,0); //aus
 			//chkTokenKey();
 		}else{
 			sqlDoLog("D","Test");
-		}
-		
-		printf("--- Pruefung beendet ---\n");
-		
-		while(nfc_initiator_target_is_present(pnd,NULL) == 0) {
-			sleep(1);
+			blink(1,0,0,2);
 		}
 		
 		printf("--- Durchgang beendet ---\n");
@@ -180,7 +209,11 @@ int main(int argc, const char *argv[]){
 		// TODO checken ob offen ist oder nicht um dann blau oder black zu zeigen
 
 		nfc_close(pnd);
+		nfc_exit(context);
+		
+		//strcpy(tokenID,"");
+		//strcpy(tokenKey,"");
+		status = 0;
 	}
-  	nfc_exit(context);
   	exit(EXIT_SUCCESS);
 }	

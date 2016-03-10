@@ -17,4 +17,7 @@ Pin 22		Ring
 Pin 23		CLK
 Pin 24		CE0
 
+Blink Fehlercode
+2 mal		Token nicht in db 	[logged D(enied)]
+
 gcc -o zuul7 3rd_try.c -lnfc -lsqlite3 -lwiringPi
