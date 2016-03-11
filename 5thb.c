@@ -150,6 +150,7 @@ main(int argc, char *argv[])
 		MifareDESFireKey new_key = mifare_desfire_des_key_new (new_key_data);
 		mifare_desfire_key_set_version (new_key, NEW_KEY_VERSION);
 		res = mifare_desfire_set_default_key (tags[i], new_key);
+// https://manned.org/mifare_desfire_create_application.3
 		free (new_key);
 		if (res < 0) {
 		    freefare_perror (tags[i], "mifare_desfire_set_default_key");
