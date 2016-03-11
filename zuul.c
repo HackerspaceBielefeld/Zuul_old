@@ -145,6 +145,10 @@ void getKeyFromUID(u_int8_t *uid) {
 	}
 }
 
+int df_connect(MifareTag tag) {
+	return mifare_desfire_connect (tag);
+}
+
 int main(int argc, char *argv[])
 {
 	printf("Zuul [v0.4 dev] Hauptprogramm\n\n");
@@ -188,7 +192,6 @@ int main(int argc, char *argv[])
 		while(nfc_initiator_select_passive_target(device, nmMifare, NULL, 0, &nt) != 1) {
 			sleep(1);
 		}
-		led(1,1,0); //gelb an
 		
 		// listet gefundene tags auf
 		tags = freefare_get_tags (device);
@@ -196,7 +199,8 @@ int main(int argc, char *argv[])
 		if(debug) printf("Tag: %x\n",tags);
 		
 		for (i = 0; tags[i]; i++) {
-			int res = mifare_desfire_connect (tags[i]);
+			int res = df_connect (tags[i]);
+			led(1,1,0); //gelb an
 			char *tag_uid = freefare_get_tag_uid (tags[i]);
 
 			

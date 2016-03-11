@@ -25,3 +25,6 @@ long yellow		wird berechnet
 
 
 gcc -o zuul7 3rd_try.c -lnfc -lsqlite3 -lwiringPi
+
+http://stackoverflow.com/questions/12207684/how-do-i-terminate-a-thread-in-c11
+http://en.cppreference.com/w/cpp/thread
