@@ -137,6 +137,7 @@ int main(int argc, char *argv[])
 		while(nfc_initiator_select_passive_target(device, nmMifare, NULL, 0, &nt) != 1) {
 			sleep(1);
 		}
+		led(1,1,0); //gelb an
 		
 		// listet gefundene tags auf
 		tags = freefare_get_tags (device);
@@ -180,27 +181,19 @@ int main(int argc, char *argv[])
 				continue;
 			}
 			if(debug) printf ("Found %s with UID %s.\n", freefare_get_tag_friendly_name (tags[i]), tag_uid);
-		}
-
-		if(debug) printf("--- Durchgang beendet ---\n");
-	}
-
-/*
+			//------------------------------------
 			
-			// bei altem tag überspringen
-			if (info.software.version_major < 1) {
-				warnx ("Found old DESFire, skipping");
-				continue;
-			}
-			printf ("Found %s with UID %s. ", freefare_get_tag_friendly_name (tags[i]), tag_uid);
-			bool do_it = true;
+			
+			
+			//------------------------------------
+			mifare_desfire_disconnect (tags[i]);
+			free (tag_uid);
 		}
 		freefare_free_tags (tags);
 		nfc_close (device);
-		
 		nfc_exit (context);
+		if(debug) printf("--- Durchgang beendet ---\n");
 	}
-    exit (error);*/
-} /* main() */
+}
 
 //https://github.com/raidolepp/libfreefare/tree/master/libfreefare/examples
