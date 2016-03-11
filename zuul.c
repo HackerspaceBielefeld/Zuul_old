@@ -54,7 +54,31 @@ static void led(int r, int g, int b) {
 	digitalWrite(LED_R, r);
 	digitalWrite(LED_G, g);
 	digitalWrite(LED_B, b);
-	if(debug) printf("# %u %u %u", r,g,b);
+	printf("# %u %u %u\n", r,g,b);
+}
+
+// blinkt <count> mal mit der led
+// untested
+static void blink(int r,int g,int b, int count) {
+	int i = 0;
+	for(i=0;i<count;i++) {
+		led(r,g,b);
+		printf("Blink an\n");
+		sleep(1);
+		led(0,0,0);
+		printf("Blink aus\n");
+		sleep(1);
+	}
+}
+
+// tür öffnen
+// untested
+static void door() {
+	printf("Tuer oeffnen\n");
+	digitalWrite(DOOR, 1);
+	sleep(3);
+	printf("Tuer beenden\n");
+	digitalWrite(DOOR, 0);
 }
 
 // berechnet den Key aus der UID und dem encryption_key
@@ -109,18 +133,19 @@ int main(int argc, char *argv[])
 		
 		// listet gefundene tags auf
 		tags = freefare_get_tags (device);
+		if(!tags) continue;
 		if(debug) printf("Tag: %x\n",tags);
+		// wenn tag kein Desfire,dann überspringen
+		if (DESFIRE != freefare_get_tag_type (tags[i])){
+			blink(1,0,0,1);
+			continue;
+		}
 		
 		
 		if(debug) printf("--- Durchgang beendet ---\n");
 	}
 
 /*
-		
-		if (!tags) {
-			nfc_close (device);
-			errx (EXIT_FAILURE, "Error listing Mifare DESFire tags.");
-		}
 
 		int i;
 		for (i = 0; (!error) && tags[i]; i++) {
