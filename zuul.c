@@ -11,7 +11,7 @@
 
 #include <sqlite3.h>
 
-int debug = 1;
+int debug = 0;
 
 int status = 0;
 sqlite3 *db;
@@ -101,6 +101,13 @@ int main(int argc, char *argv[])
 	printf("Zuul [v0.4 dev] Hauptprogramm\n\n");
 	
 	int i,j;
+	for(i=1;i<argc;i++) {
+		//printf("%i: %s\n",i,argv[i]);
+		if(!strcmp(argv[i],"-d")){
+			debug = 1;
+			printf("[Debug-Mode]\n");
+		}
+	}
 		
 	//GPIO als ausgänge legen
     pinMode(LED_R, OUTPUT);
@@ -135,45 +142,50 @@ int main(int argc, char *argv[])
 		tags = freefare_get_tags (device);
 		if(!tags) continue;
 		if(debug) printf("Tag: %x\n",tags);
-		// wenn tag kein Desfire,dann überspringen
-		if (DESFIRE != freefare_get_tag_type (tags[i])){
-			blink(1,0,0,1);
-			continue;
-		}
 		
-		
-		if(debug) printf("--- Durchgang beendet ---\n");
-	}
-
-/*
-
-		int i;
-		for (i = 0; (!error) && tags[i]; i++) {
+		for (i = 0; tags[i]; i++) {
 			// wenn tag kein Desfire,dann überspringen
-			if (DESFIRE != freefare_get_tag_type (tags[i]))
+			if (DESFIRE != freefare_get_tag_type (tags[i])){
+				blink(1,0,0,1);
+				if(debug) printf("Tag ist kein DesFire\n");
 				continue;
-
-			//holt uid von token
+			}
+		
+			// hole UID
 			char *tag_uid = freefare_get_tag_uid (tags[i]);
-			char buffer[BUFSIZ]; // ??? nur für konsolen kram
-			int res;
-
-			// verbindet token
-			res = mifare_desfire_connect (tags[i]);
+			if(debug) printf("UID: %s\n",tag_uid);
+			
+			// versuche DesFire verbindung
+			int res = mifare_desfire_connect (tags[i]);
 			if (res < 0) {
-				warnx ("Can't connect to Mifare DESFire target.");
-				error = EXIT_FAILURE;
+				if(debug) warnx ("Can't connect to Mifare DESFire target.");
+				blink(1,0,0,1);
 				break;
 			}
-
-			// Make sure we've at least an EV1 version
+			
+			// prüfte ob EV1
 			struct mifare_desfire_version_info info;
 			res = mifare_desfire_get_version (tags[i], &info);
 			if (res < 0) {
 				freefare_perror (tags[i], "mifare_desfire_get_version");
-				error = 1;
+				if(debug) printf("Token ist kein EV1\n");
+				blink(1,0,0,1);
 				break;
 			}
+			
+			// prüfe ob version
+			if (info.software.version_major < 1) {
+				if(debug) warnx ("Found old DESFire, skipping");
+				blink(1,0,0,1);
+				continue;
+			}
+			if(debug) printf ("Found %s with UID %s.\n", freefare_get_tag_friendly_name (tags[i]), tag_uid);
+		}
+
+		if(debug) printf("--- Durchgang beendet ---\n");
+	}
+
+/*
 			
 			// bei altem tag überspringen
 			if (info.software.version_major < 1) {
