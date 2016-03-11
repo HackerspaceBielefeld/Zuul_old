@@ -12,8 +12,10 @@
 
 // müsste der key sein fürs file system
 uint8_t key_data_picc[8] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };	
+// verrechnungsschlüssel wird mit uid verrechnet
+u_int8_t encryption_key[8] = { 0x42, 0x13, 0x37, 0x42, 0x13, 0x37, 0x12, 0x34 };
 // key für Dir
-	// Str Zuul-HSB
+	// Str Zuul-HSB in hex
 uint8_t key_for_zuul[8] = { 0x5a, 0x75, 0x75, 0x6c, 0x2d, 0x48, 0x53, 0x42 };
 
 // Default Mifare DESFire ATS
@@ -23,11 +25,25 @@ struct {
 	bool interactive;
 } configure_options = {
 	.interactive = true
-};
+};// nur für terminal mode
+
+u_int8_t *getKeyFromUID(u_int8_t *uid) {
+	int n = sizeof(uid) / sizeof(uid[0]);
+	int i = 0;
+	u_int8_t ret[n];
+	for(i=0;i<n;i++) {
+		if(uid[i] <= 0x80) {
+			ret[i] = uid[i] + encryption_key[i];
+		}else{
+			ret[i] = uid[i] - encryption_key[i];
+		}
+	}
+	return ret;
+}
 
 int main(int argc, char *argv[])
 {
-	int ch; //???
+	//int ch; //???
 	int error = EXIT_SUCCESS;
 	nfc_device *device = NULL; // geöffneter Leser
 	MifareTag *tags = NULL; //gefundene Token
