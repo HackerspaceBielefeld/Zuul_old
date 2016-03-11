@@ -13,6 +13,8 @@
 
 int debug = 0;
 
+char tokenID[32];
+char tokenKey[32];
 int status = 0;
 sqlite3 *db;
 
@@ -25,6 +27,7 @@ nfc_device *device; 		// pointer für lese gerät
 nfc_target nt; 			// platz für daten vom Token
 nfc_context *context;	//
 MifareTag *tags = NULL; //gefundene Token
+int rc;
 
 // konstanten GPIO
 const int LED_R = 8;	//rot
@@ -81,6 +84,52 @@ static void door() {
 	digitalWrite(DOOR, 0);
 }
 
+//dummy func für nach dem zugriff auf die db
+//ungeprüft
+static int sqlDoNothing(void *NotUsed, int argc, char **argv, char **azColName){
+	return 0;
+}
+
+//schreibt einen Log eintrag
+//ungeprüft
+void sqlDoLog(char *answ,char *info) {
+	char *zErrMsg = 0;
+	char query[1024];
+
+	rc = sqlite3_open(dbFile, &db);
+	if(rc) {
+		printf("SQL: unbekannter Fehler.\n");
+		exit(1);
+	}else{
+		printf("SQL: DB geoeffnet.\n");
+		snprintf(query, sizeof(query), "INSERT INTO log (tokenID,answere,timeCode,addInfo) VALUES ('%s','%s',datetime(),'%s');", tokenID,answ,info);
+		printf("%s\n",query);
+		rc = sqlite3_exec(db, query, sqlDoNothing, 0, &zErrMsg);
+		if( rc != SQLITE_OK ){
+			printf("SQL: %s\n", zErrMsg);
+			sqlite3_free(zErrMsg);
+		}else{
+			printf("SQL: Log: success\n");
+		}
+	}
+	sqlite3_close(db);
+}
+
+//überprüfe den token
+//TODO chier gehts weiter
+int chkTokenKey(void *NotUsed, int argc, char **argv, char **azColName){
+	printf("ARGC: %u\n",argc);
+	if(argc==0) {
+		//doorCode = 1;
+	}
+	
+	printf("UID: %s\nKey: %s\n",argv[1], argv[0]);
+
+	return 0;
+}
+
+
+
 // berechnet den Key aus der UID und dem encryption_key
 // untested
 void getKeyFromUID(u_int8_t *uid) {
@@ -99,6 +148,7 @@ void getKeyFromUID(u_int8_t *uid) {
 int main(int argc, char *argv[])
 {
 	printf("Zuul [v0.4 dev] Hauptprogramm\n\n");
+	led(1,1,1);
 	
 	int i,j;
 	for(i=1;i<argc;i++) {
@@ -118,6 +168,7 @@ int main(int argc, char *argv[])
 	
 	while(true) {
 		sleep(1);
+		led(0,0,0);
 		// nfc initiiere
 		nfc_init(&context); //lese gerät initiieren
 		if (context == NULL) {
@@ -145,19 +196,11 @@ int main(int argc, char *argv[])
 		if(debug) printf("Tag: %x\n",tags);
 		
 		for (i = 0; tags[i]; i++) {
-			// wenn tag kein Desfire,dann überspringen
-			if (DESFIRE != freefare_get_tag_type (tags[i])){
-				blink(1,0,0,1);
-				if(debug) printf("Tag ist kein DesFire\n");
-				continue;
-			}
-		
-			// hole UID
-			char *tag_uid = freefare_get_tag_uid (tags[i]);
-			if(debug) printf("UID: %s\n",tag_uid);
-			
-			// versuche DesFire verbindung
 			int res = mifare_desfire_connect (tags[i]);
+			char *tag_uid = freefare_get_tag_uid (tags[i]);
+
+			
+			// hole UID
 			if (res < 0) {
 				if(debug) warnx ("Can't connect to Mifare DESFire target.");
 				blink(1,0,0,1);
