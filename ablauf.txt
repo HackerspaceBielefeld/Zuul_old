@@ -1,0 +1,42 @@
+ablauf
+
+# tag wird erkannt
+
+# LED gelb
+
+# tagID wird gelesen und
+
+# tagKey aus tagID und salt errechnen
+
+# ist tag mit dem tagKey zu öffnen
+	# ist ordner "zuul" mit staticKey zu öffnen
+		# inhalt lesen
+		
+		# db abfrage mit tagID und active (token und user) erzeugt einen fund
+			# vergleiche db mit tag inhalt
+				# random inhalt erzeugen
+				# neuer inhalt erfolgreich schreiben
+					# inhalt in db hinterlegen
+					# tür öffnen
+					# LED !gelb grün für 5 sek dauerleuchten
+				# else
+					# tür öffnen
+					# LED grün für 5 sek dauerleuchten (gelb bleibt an)
+				
+			# else
+				# logeintrag: token/user inactive (id,"user_token_inactive")
+				# LED !gelb rot 5mal blinken
+			
+		# else
+			# logeintrag: db fehler (id, "no_entry_error")
+			# LED !gelb rot 4 mal blinken
+
+	# else
+		# logeintrag: ordner fehler (id,"statickey_error")
+		# LED !gelb rot 3mal blinken
+
+# else
+	# logeintrag: key abgelehnt (id, "tagkey_error")
+	# LED !gelb rot 2mal blinken
+
+# LED all aus
