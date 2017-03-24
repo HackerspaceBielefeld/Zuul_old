@@ -5,17 +5,17 @@ import func
 con = func.sql_connect('zuul.db')
 print "Erstelle log tabelle"
 func.sql(con,'''CREATE TABLE log (
-  tokenID varchar(32) NOT NULL,
-  answere varchar(1) NOT NULL ,
+  tokenID BLOB NOT NULL,
+  answere TEXT NOT NULL ,
   timecode timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  addInfo varchar(75) NULL DEFAULT ''
+  addInfo TEXT NULL DEFAULT ''
 )''')
 print "Erstelle token tabelle"
 func.sql(con,'''CREATE TABLE token (
-  tID varchar(32) NOT NULL,
+  tID BLOB NOT NULL,
   userID int(11) NOT NULL,
-  tKey varchar(32) NOT NULL,
-  tActive int(1) NOT NULL DEFAULT '1',
+  tKey BLOB NOT NULL,
+  tActive INTEGER NOT NULL DEFAULT '1',
   lastUsed timestamp NOT NULL DEFAULT '0000-00-00 00:00:00'
 )''')
 

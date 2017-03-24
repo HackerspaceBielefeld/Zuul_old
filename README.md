@@ -18,6 +18,13 @@ Pin 23		CLK
 Pin 24		CE0
 
 Blink Fehlercode
-2 mal		Token nicht in db 	[logged D(enied)]
+1 mal	red		Token kein DesFire/EV1 oder Version zu alt
+2 mal	red		Token nicht in db 	[logged D(enied)]
+long green			Token erkannt tür öffnet
+long yellow		wird berechnet
+
 
 gcc -o zuul7 3rd_try.c -lnfc -lsqlite3 -lwiringPi
+
+http://stackoverflow.com/questions/12207684/how-do-i-terminate-a-thread-in-c11
+http://en.cppreference.com/w/cpp/thread

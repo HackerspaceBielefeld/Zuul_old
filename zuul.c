@@ -1,9 +1,33 @@
+#include <err.h>
+#include <errno.h>
 #include <stdlib.h>
-#include <nfc/nfc.h>
-#include <wiringPi.h>
 #include <string.h>
-#include <sqlite3.h>
 #include <unistd.h>
+
+#include <nfc/nfc.h>
+#include <freefare.h>
+
+#include <wiringPi.h>
+
+#include <sqlite3.h>
+
+int debug = 0;
+
+char tokenID[32];
+char tokenKey[32];
+int status = 0;
+sqlite3 *db;
+
+// Konstanten NFC
+const nfc_modulation nmMifare = {
+	.nmt = NMT_ISO14443A,
+	.nbr = NBR_106,
+};
+nfc_device *device; 		// pointer für lese gerät
+nfc_target nt; 			// platz für daten vom Token
+nfc_context *context;	//
+MifareTag *tags = NULL; //gefundene Token
+int rc;
 
 // konstanten GPIO
 const int LED_R = 8;	//rot
@@ -15,26 +39,20 @@ const int DOOR = 18;	//türöffner
 // konstanten SQLITE3
 const char *dbFile = "zuul.db";
 
-// Konstanten NFC
-const nfc_modulation nmMifare = {
-	.nmt = NMT_ISO14443A,
-	.nbr = NBR_106,
-};
+// müsste der key sein fürs file system
+uint8_t key_data_picc[8] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };	
+// verrechnungsschlüssel wird mit uid verrechnet
+u_int8_t encryption_key[8] = { 0x42, 0x13, 0x37, 0x42, 0x13, 0x37, 0x12, 0x34 };
+u_int8_t new_key[8] = { 0x42, 0x13, 0x37, 0x42, 0x13, 0x37, 0x12, 0x34 };
+// key für Dir
+	// Str Zuul-HSB in hex
+uint8_t key_for_zuul[8] = { 0x5a, 0x75, 0x75, 0x6c, 0x2d, 0x48, 0x53, 0x42 };
 
-// globale variablen
-char tokenID[32];
-char tokenKey[32];
-int status = 0;
-sqlite3 *db;
-int rc;
-
-// nfc bereit machen
-nfc_device *pnd; 		// pointer für lese gerät
-nfc_target nt; 			// platz für daten vom Token
-nfc_context *context;	//
+// Default Mifare DESFire ATS
+uint8_t new_ats[] = { 0x06, 0x75, 0x77, 0x81, 0x02, 0x80 };
 
 // led steuerung
-// ungeprüft
+// untested
 static void led(int r, int g, int b) {
 	digitalWrite(LED_R, r);
 	digitalWrite(LED_G, g);
@@ -43,7 +61,7 @@ static void led(int r, int g, int b) {
 }
 
 // blinkt <count> mal mit der led
-//ungetested
+// untested
 static void blink(int r,int g,int b, int count) {
 	int i = 0;
 	for(i=0;i<count;i++) {
@@ -56,8 +74,8 @@ static void blink(int r,int g,int b, int count) {
 	}
 }
 
-//tür öffnen
-//ungeprüft
+// tür öffnen
+// untested
 static void door() {
 	printf("Tuer oeffnen\n");
 	digitalWrite(DOOR, 1);
@@ -74,7 +92,7 @@ static int sqlDoNothing(void *NotUsed, int argc, char **argv, char **azColName){
 
 //schreibt einen Log eintrag
 //ungeprüft
-int sqlDoLog(char *answ,char *info) {
+void sqlDoLog(char *answ,char *info) {
 	char *zErrMsg = 0;
 	char query[1024];
 
@@ -110,53 +128,41 @@ int chkTokenKey(void *NotUsed, int argc, char **argv, char **azColName){
 	return 0;
 }
 
-int chkTokenID_res(void *NotUsed, int argc, char **argv, char **azColName){
-	printf("ARGC: %u\n",argc);
-	if(argc == 0) {
-		//keine übereinstimmung
-		strcpy(tokenKey,"");
-		status = -1;
-		return 1;
-	}else{
-		//übereinstimmung gefunden
-		strcpy(tokenKey,argv[0]);
-		status = 1;
-		return 0;
-	}
-	
-	//printf("UID: %s\nKey: %s\n",argv[1], argv[0]);
 
-}
 
-//suche token in DB
-//ungeprüft
-int chkTokenID() {
-	char *zErrMsg = 0;
-	char query[1024];
-	rc = sqlite3_open(dbFile, &db);
-	
-	if(rc) {
-		printf("SQL: unbekannter Fehler.\n");
-		exit(1);
-	}else{
-		printf("SQL: DB geoeffnet.\n");
-		snprintf(query, sizeof(query), "SELECT tKey,userID FROM token WHERE tID = '%s';", tokenID);
-		printf("%s\n",query);
-		rc = sqlite3_exec(db, query, chkTokenID_res, 0, &zErrMsg);
-		if( rc != SQLITE_OK ){
-			printf("SQL: %s\n", zErrMsg);
-			sqlite3_free(zErrMsg);
+// berechnet den Key aus der UID und dem encryption_key
+// untested
+void getKeyFromUID(u_int8_t *uid) {
+	int n = sizeof(uid);
+	printf("N: %i\n",n);
+	int i = 0;
+	for(i=0;i<n;i++) {
+		if(uid[i] <= 0x80) {
+			new_key[i] = uid[i] + encryption_key[i];
 		}else{
-			printf("SQL: success\n");
+			new_key[i] = uid[i] - encryption_key[i];
 		}
 	}
-	sqlite3_close(db);
 }
 
+int df_connect(MifareTag tag) {
+	return mifare_desfire_connect (tag);
+}
 
-int main(int argc, const char *argv[]){
-	printf("Zuul [v0.3 dev] Hauptprogramm\n\n");
+int main(int argc, char *argv[])
+{
+	printf("Zuul [v0.4 dev] Hauptprogramm\n\n");
+	led(1,1,1);
 	
+	int i,j;
+	for(i=1;i<argc;i++) {
+		//printf("%i: %s\n",i,argv[i]);
+		if(!strcmp(argv[i],"-d")){
+			debug = 1;
+			printf("[Debug-Mode]\n");
+		}
+	}
+		
 	//GPIO als ausgänge legen
     pinMode(LED_R, OUTPUT);
     pinMode(LED_G, OUTPUT);
@@ -165,6 +171,8 @@ int main(int argc, const char *argv[]){
 	pinMode(DOOR, OUTPUT);
 	
 	while(true) {
+		sleep(1);
+		led(0,0,0);
 		// nfc initiiere
 		nfc_init(&context); //lese gerät initiieren
 		if (context == NULL) {
@@ -172,48 +180,67 @@ int main(int argc, const char *argv[]){
 			exit(EXIT_FAILURE);
 		}
 		
-		printf("--- Neuer Durchgang ---\n");
+		if(debug) printf("--- Neuer Durchgang ---\n");
 		// auf token warten
-		pnd = nfc_open(context, NULL);
-		printf("-- nfc_open --\n");
-		if (pnd == NULL) {
-			printf("ERROR:%s\n", "Unable to open NFC device.");
+		device = nfc_open(context, NULL);
+		if(debug) printf("-- nfc_open --\n");
+		if (device == NULL) {
+			if(debug) printf("ERROR:%s\n", "Unable to open NFC device.");
 			exit(EXIT_FAILURE);
 		}
 		
-		while(nfc_initiator_select_passive_target(pnd, nmMifare, NULL, 0, &nt) != 1) {
+		while(nfc_initiator_select_passive_target(device, nmMifare, NULL, 0, &nt) != 1) {
 			sleep(1);
 		}
 		
-		sprintf(tokenID,"%02x %02x %02x %02x %02x %02x %02x %02x",nt.nti.nai.abtUid[0],nt.nti.nai.abtUid[1],nt.nti.nai.abtUid[2],nt.nti.nai.abtUid[3],nt.nti.nai.abtUid[4],nt.nti.nai.abtUid[5],nt.nti.nai.abtUid[6],nt.nti.nai.abtUid[7]);
-			printf("%s\n",tokenID);
-		led(1,1,0); //Gelb
+		// listet gefundene tags auf
+		tags = freefare_get_tags (device);
+		if(!tags) continue;
+		if(debug) printf("Tag: %x\n",tags);
 		
-		printf("--- Beginne Pruefung ---\n");
-		
-		chkTokenID();
-		if(status == 1) {
-			printf("--- Suchen Token Key ---\n");
-			sqlDoLog("G","Test");
-			led(0,1,0); //grün
-			door();
-			led(0,0,0); //aus
-			//chkTokenKey();
-		}else{
-			sqlDoLog("D","Test");
-			blink(1,0,0,2);
-		}
-		
-		printf("--- Durchgang beendet ---\n");
-		
-		// TODO checken ob offen ist oder nicht um dann blau oder black zu zeigen
+		for (i = 0; tags[i]; i++) {
+			int res = df_connect (tags[i]);
+			led(1,1,0); //gelb an
+			char *tag_uid = freefare_get_tag_uid (tags[i]);
 
-		nfc_close(pnd);
-		nfc_exit(context);
-		
-		//strcpy(tokenID,"");
-		//strcpy(tokenKey,"");
-		status = 0;
+			
+			// hole UID
+			if (res < 0) {
+				if(debug) warnx ("Can't connect to Mifare DESFire target.");
+				blink(1,0,0,1);
+				break;
+			}
+			
+			// prüfte ob EV1
+			struct mifare_desfire_version_info info;
+			res = mifare_desfire_get_version (tags[i], &info);
+			if (res < 0) {
+				freefare_perror (tags[i], "mifare_desfire_get_version");
+				if(debug) printf("Token ist kein EV1\n");
+				blink(1,0,0,1);
+				break;
+			}
+			
+			// prüfe ob version
+			if (info.software.version_major < 1) {
+				if(debug) warnx ("Found old DESFire, skipping");
+				blink(1,0,0,1);
+				continue;
+			}
+			if(debug) printf ("Found %s with UID %s.\n", freefare_get_tag_friendly_name (tags[i]), tag_uid);
+			//------------------------------------
+			
+			
+			
+			//------------------------------------
+			mifare_desfire_disconnect (tags[i]);
+			free (tag_uid);
+		}
+		freefare_free_tags (tags);
+		nfc_close (device);
+		nfc_exit (context);
+		if(debug) printf("--- Durchgang beendet ---\n");
 	}
-  	exit(EXIT_SUCCESS);
-}	
+}
+
+//https://github.com/raidolepp/libfreefare/tree/master/libfreefare/examples
